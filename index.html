@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>最上清貴 宛て / 連絡フォーム</title>
+  <style>
+    :root {
+      --bg: #f5f5f5;
+      --panel: #ffffff;
+      --border: #d9d9d9;
+      --text: #222;
+      --muted: #666;
+      --accent: #2f6fed;
+      --accent-dark: #1f58c7;
+      --danger: #a33;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    .loading-screen {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(180deg, #f7f7f7 0%, #ececec 100%);
+      transition: opacity .7s ease, visibility .7s ease;
+    }
+    .loading-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .loading-box {
+      width: min(88vw, 420px);
+      background: rgba(255,255,255,.94);
+      border: 1px solid #d7d7d7;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,.08);
+      padding: 22px 20px 18px;
+      text-align: center;
+      animation: loadingFloat 1.6s ease-in-out infinite;
+    }
+    .loading-title { font-size: 18px; font-weight: 700; margin: 0 0 8px; letter-spacing: .04em; }
+    .loading-sub { font-size: 13px; color: var(--muted); line-height: 1.8; margin-bottom: 14px; white-space: pre-line; }
+    .loading-bar { width: 100%; height: 8px; border-radius: 999px; background: #ececec; overflow: hidden; position: relative; margin-bottom: 12px; }
+    .loading-bar::after {
+      content: ""; position: absolute; top: 0; left: -35%; width: 35%; height: 100%;
+      background: linear-gradient(90deg, #8ab4ff 0%, #2f6fed 100%);
+      border-radius: 999px; animation: loadingBar 1.5s ease-in-out infinite;
+    }
+    .loading-status { font-size: 12px; color: var(--muted); letter-spacing: .06em; }
+
+    .noise-overlay {
+      position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 8500;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255,255,255,.05), transparent 24%),
+        radial-gradient(circle at 80% 70%, rgba(0,0,0,.05), transparent 28%),
+        repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0px, rgba(255,255,255,.018) 1px, rgba(0,0,0,.018) 2px, rgba(0,0,0,.018) 3px),
+        linear-gradient(90deg, rgba(255,255,255,.04), rgba(0,0,0,.04));
+      mix-blend-mode: multiply;
+      transition: opacity .25s ease;
+    }
+    .noise-overlay.active { opacity: .78; animation: noiseFlash .14s steps(3) infinite; }
+
+    .glitch-line {
+      position: fixed; left: 0; right: 0; height: 3px; top: 20%;
+      background: rgba(255,255,255,.8);
+      box-shadow: 0 0 18px rgba(120,160,255,.5);
+      opacity: 0; z-index: 8600; pointer-events: none;
+    }
+    .glitch-line.active { opacity: .95; animation: glitchSweep .8s linear infinite; }
+
+    .slice-glitch {
+      position: fixed; inset: 0; pointer-events: none; z-index: 8650; opacity: 0;
+      background:
+        linear-gradient(180deg,
+          transparent 0%, transparent 22%,
+          rgba(255,255,255,.55) 22.5%, rgba(255,255,255,.1) 24%,
+          transparent 24.5%, transparent 52%,
+          rgba(0,0,0,.32) 52.5%, rgba(255,255,255,.28) 54%,
+          transparent 54.5%, transparent 100%);
+      mix-blend-mode: screen;
+    }
+    .slice-glitch.active { opacity: .9; animation: sliceShift .18s steps(2) infinite; }
+
+    .flash-overlay {
+      position: fixed; inset: 0; background: rgba(255,255,255,.92);
+      opacity: 0; pointer-events: none; z-index: 8700; transition: opacity .12s ease;
+    }
+    .flash-overlay.active { opacity: 1; }
+
+    .app-shell { opacity: 0; transform: translateY(16px); transition: opacity .7s ease, transform .7s ease; }
+    .app-shell.ready { opacity: 1; transform: translateY(0); }
+
+    .wrap { max-width: 780px; margin: 0 auto; padding: 20px 14px 40px; }
+    .mail-shell {
+      background: var(--panel);
+      border: 1px solid rgba(217,217,217,.95);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,.05), 0 2px 10px rgba(0,0,0,.04);
+      position: relative;
+      backdrop-filter: blur(2px);
+    }
+    .mail-shell::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,.45), transparent 28%);
+      pointer-events: none;
+    }
+    .mail-head {
+      padding: 16px 18px;
+      border-bottom: 1px solid rgba(217,217,217,.9);
+      background: linear-gradient(180deg, #fafafa 0%, #f6f6f6 100%);
+      transition: opacity .9s ease;
+    }
+    .mail-title { font-size: 22px; font-weight: 700; margin: 0 0 10px; }
+    .meta-row { display: grid; grid-template-columns: 72px 1fr; gap: 8px; font-size: 14px; line-height: 1.7; }
+    .meta-label { color: var(--muted); }
+    .mail-body { padding: 18px; }
+    .intro {
+      margin: 0 0 18px;
+      line-height: 1.95;
+      font-size: 15px;
+      white-space: pre-line;
+      transition: opacity .9s ease;
+      color: #2a2a2a;
+    }
+
+    .thread { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; transition: opacity 1.2s ease, filter 1.2s ease; }
+    .thread.fading { opacity: 0; filter: blur(4px); }
+
+    .bubble {
+      border: 1px solid rgba(217,217,217,.92);
+      border-radius: 14px;
+      padding: 12px 14px;
+      line-height: 1.85;
+      font-size: 15px;
+      white-space: pre-line;
+      background: linear-gradient(180deg, #fcfcfc 0%, #fafafa 100%);
+      box-shadow: 0 2px 8px rgba(0,0,0,.025);
+      transition: transform .22s ease, box-shadow .22s ease;
+    }
+    .bubble:hover { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(0,0,0,.045); }
+    .bubble.system { background: linear-gradient(180deg, #f8fbff 0%, #f4f8ff 100%); border-color: #cddcf8; }
+    .bubble.mogami { background: linear-gradient(180deg, #fffef9 0%, #fffaf0 100%); border-color: #ece3c4; }
+    .bubble.player { background: linear-gradient(180deg, #f7f7f7 0%, #f2f2f2 100%); }
+    .bubble.final-mail {
+      background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+      border-color: #cfd5e2;
+      box-shadow: 0 8px 24px rgba(47,111,237,.08), 0 2px 8px rgba(0,0,0,.04);
+      animation: finalMailPulse 2.4s ease-in-out infinite;
+    }
+    .bubble-label {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      margin-bottom: 6px; font-size: 12px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase;
+    }
+    .bubble-time { flex: 0 0 auto; font-size: 11px; letter-spacing: .04em; color: #8a8a8a; text-transform: none; }
+    .mail-chip {
+      display: inline-block; margin-top: 10px; border: 1px solid #cfd5e2; border-radius: 10px;
+      background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
+      padding: 10px 12px; font-size: 13px; color: #355; box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+    }
+
+    .compose {
+      border-top: 1px solid rgba(217,217,217,.9);
+      padding-top: 16px; margin-top: 10px;
+      transition: opacity .9s ease, height .9s ease, margin .9s ease, padding .9s ease;
+    }
+    .compose.hidden { opacity: 0; height: 0; overflow: hidden; margin-top: 0; padding-top: 0; border-top: none; pointer-events: none; }
+    .compose-head { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+    label { display: block; margin: 12px 0 6px; font-size: 13px; color: var(--muted); }
+    textarea, .puzzle-input {
+      width: 100%; border: 1px solid rgba(217,217,217,.95); border-radius: 12px; padding: 10px 12px;
+      font-size: 15px; font-family: inherit; background: #fff; color: var(--text);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,.025); transition: border-color .2s ease, box-shadow .2s ease;
+    }
+    textarea:focus, .puzzle-input:focus { outline: none; border-color: #8ab4ff; box-shadow: 0 0 0 3px rgba(47,111,237,.10); }
+    textarea { min-height: 150px; resize: vertical; line-height: 1.8; }
+    .small { margin-top: 8px; font-size: 12px; color: var(--muted); line-height: 1.7; }
+    .actions, .puzzle-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
+
+    button {
+      cursor: pointer; border: 1px solid rgba(217,217,217,.95);
+      background: linear-gradient(180deg, #fff 0%, #f7f7f7 100%);
+      color: var(--text); border-radius: 12px; padding: 10px 14px; font-size: 14px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.04); transition: transform .18s ease, box-shadow .18s ease;
+    }
+    button:hover:not(:disabled) {
+      background: linear-gradient(180deg, #ffffff 0%, #f2f2f2 100%);
+      transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,.06);
+    }
+    button:disabled { opacity: .7; cursor: not-allowed; }
+    .primary {
+      background: linear-gradient(180deg, #4285ff 0%, #2f6fed 100%);
+      color: #fff; border-color: #2f6fed; box-shadow: 0 6px 14px rgba(47,111,237,.18);
+    }
+    .primary:hover:not(:disabled) {
+      background: linear-gradient(180deg, #3a7df4 0%, #1f58c7 100%);
+      box-shadow: 0 8px 16px rgba(47,111,237,.24);
+    }
+
+    .status, .puzzle-status { margin-top: 10px; font-size: 13px; color: var(--muted); min-height: 1.4em; }
+    .status.ok, .puzzle-status.ok { color: #215f21; }
+    .status.warn, .puzzle-status.warn { color: var(--danger); }
+    .footer-note { margin-top: 18px; font-size: 12px; color: var(--muted); line-height: 1.8; transition: opacity .9s ease; }
+
+    .glitching { position: relative; animation: textJitter .12s steps(2) infinite; }
+    .glitching::before, .glitching::after {
+      content: attr(data-text); position: absolute; inset: 0; pointer-events: none; opacity: .75;
+    }
+    .glitching::before {
+      color: rgba(255,60,60,.72); transform: translateX(2px); mix-blend-mode: multiply; clip-path: inset(0 0 42% 0);
+    }
+    .glitching::after {
+      color: rgba(70,150,255,.72); transform: translateX(-2px); mix-blend-mode: screen; clip-path: inset(58% 0 0 0);
+    }
+    .shell-glitch { animation: shellShake .16s steps(2) infinite; filter: contrast(1.03) saturate(1.04); }
+    .hard-glitch { animation: hardShake .08s steps(2) infinite; filter: contrast(1.08) saturate(1.08); }
+
+    .puzzle-overlay, .video-overlay, .monologue-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.38); display: none;
+      align-items: center; justify-content: center; z-index: 8000; padding: 18px;
+    }
+    .puzzle-overlay.active, .video-overlay.active, .monologue-overlay.active { display: flex; }
+    .monologue-overlay { background: rgba(10,10,14,.46); backdrop-filter: blur(2px); z-index: 8450; }
+    .monologue-box {
+      width: min(88vw, 560px); text-align: center; color: rgba(255,255,255,.96);
+      padding: 24px 20px; line-height: 2.05; font-size: 18px; letter-spacing: .02em;
+      text-shadow: 0 2px 14px rgba(0,0,0,.45);
+      opacity: 0; transform: translateY(8px);
+    }
+    .monologue-overlay.active .monologue-box { opacity: 1; transform: translateY(0); }
+    .monologue-hint { margin-top: 18px; font-size: 12px; letter-spacing: .08em; color: rgba(255,255,255,.72); }
+
+    .puzzle-modal, .video-modal {
+      width: min(92vw, 520px);
+      background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+      border: 1px solid #d6d9e6; border-radius: 16px; box-shadow: 0 18px 50px rgba(0,0,0,.18);
+      overflow: hidden; transform: translateY(8px); animation: puzzlePop .22s ease forwards;
+    }
+    .puzzle-modal-head, .video-modal-head {
+      padding: 14px 16px; border-bottom: 1px solid #e5e7f0; background: #f8fbff;
+    }
+    .puzzle-modal-title, .video-modal-title { font-size: 16px; font-weight: 700; margin: 0 0 4px; }
+    .puzzle-modal-meta, .video-modal-meta { font-size: 12px; color: var(--muted); }
+    .puzzle-modal-body, .video-modal-body { padding: 16px; }
+    .puzzle-text { font-size: 14px; line-height: 1.9; color: #334; white-space: pre-line; margin-bottom: 12px; }
+    .video-placeholder {
+      border: 1px solid #ccd3e0; border-radius: 12px;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(255,255,255,.08), transparent 18%),
+        linear-gradient(180deg, #111 0%, #2b2b2b 100%);
+      color: #eee; min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 10px; text-align: center; padding: 20px; white-space: pre-line;
+      box-shadow: inset 0 0 30px rgba(255,255,255,.04);
+    }
+
+    @keyframes loadingBar { 0% { left: -35%; } 100% { left: 100%; } }
+    @keyframes loadingFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    @keyframes puzzlePop { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes noiseFlash {
+      0% { transform: translateX(0) translateY(0); opacity: .52; }
+      20% { transform: translateX(-2px) translateY(1px); opacity: .88; }
+      40% { transform: translateX(2px) translateY(-1px); opacity: .62; }
+      60% { transform: translateX(-1px) translateY(2px); opacity: .82; }
+      80% { transform: translateX(1px) translateY(-2px); opacity: .70; }
+      100% { transform: translateX(0) translateY(0); opacity: .58; }
+    }
+    @keyframes finalMailPulse { 0%, 100% { box-shadow: 0 8px 24px rgba(47,111,237,.08), 0 2px 8px rgba(0,0,0,.04); } 50% { box-shadow: 0 12px 28px rgba(47,111,237,.16), 0 4px 12px rgba(0,0,0,.06); } }
+    @keyframes textJitter { 0% { transform: translate(0,0); } 25% { transform: translate(-1px,0); } 50% { transform: translate(1px,0); } 75% { transform: translate(0,1px); } 100% { transform: translate(0,0); } }
+    @keyframes shellShake { 0% { transform: translate(0,0); } 20% { transform: translate(-1px,0); } 40% { transform: translate(1px,0); } 60% { transform: translate(-1px,1px); } 80% { transform: translate(1px,-1px); } 100% { transform: translate(0,0); } }
+    @keyframes hardShake { 0% { transform: translate(0,0); } 20% { transform: translate(-2px,1px); } 40% { transform: translate(2px,-1px); } 60% { transform: translate(-1px,-2px); } 80% { transform: translate(2px,1px); } 100% { transform: translate(0,0); } }
+    @keyframes sliceShift { 0% { transform: translateX(0); } 33% { transform: translateX(-6px); } 66% { transform: translateX(8px); } 100% { transform: translateX(0); } }
+    @keyframes glitchSweep { 0% { top: 6%; } 100% { top: 92%; } }
+
+    @media (max-width: 640px) {
+      .mail-title { font-size: 19px; }
+      .meta-row { grid-template-columns: 58px 1fr; font-size: 13px; }
+      .mail-body { padding: 14px; }
+      .bubble { font-size: 14px; line-height: 1.8; border-radius: 12px; }
+      textarea { min-height: 130px; }
+      .loading-box { padding: 18px 16px 15px; border-radius: 14px; }
+      .loading-title { font-size: 16px; }
+      .loading-sub { font-size: 12px; }
+      .loading-status { font-size: 11px; }
+      .video-placeholder { min-height: 180px; }
+      button { width: 100%; }
+      .actions, .puzzle-row { gap: 8px; }
+      .mail-shell, .puzzle-modal, .video-modal { border-radius: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="loadingScreen" class="loading-screen">
+    <div class="loading-box">
+      <div id="loadingTitle" class="loading-title">最上清貴 連絡フォーム</div>
+      <div class="loading-sub">接続を確認しています…
+過去の送信履歴と自動応答を読み込んでいます。</div>
+      <div class="loading-bar"></div>
+      <div id="loadingStatus" class="loading-status">CONNECTING...</div>
+    </div>
+  </div>
+
+  <div id="noiseOverlay" class="noise-overlay"></div>
+  <div id="glitchLine" class="glitch-line"></div>
+  <div id="sliceGlitch" class="slice-glitch"></div>
+  <div id="flashOverlay" class="flash-overlay"></div>
+
+  <div id="appShell" class="app-shell">
+    <div class="wrap">
+      <div id="mailShell" class="mail-shell">
+        <div class="mail-head">
+          <h1 id="mailTitle" class="mail-title">最上清貴 宛て / 連絡フォーム</h1>
+          <div class="meta-row"><div class="meta-label">宛先</div><div id="recipientLine">最上 清貴 &lt;mogami-contact@example.jp&gt;</div></div>
+          <div class="meta-row"><div class="meta-label">件名</div><div id="subjectLine">調査について</div></div>
+          <div class="meta-row"><div class="meta-label">形式</div><div id="formatLine">表向きはメール送信フォーム / 内部的には進行型テキスト演出</div></div>
+        </div>
+        <div class="mail-body">
+          <p id="introText" class="intro">このフォームは、最上清貴へ調査内容を報告するためのものです。
+
+入力内容や選択した語句に応じて、返信内容や進行が変化します。
+見た目はメールフォームですが、実際にはノベルゲームのように進行していきます。</p>
+          <div id="thread" class="thread"></div>
+          <div id="composeBox" class="compose">
+            <div class="compose-head">本文を入力</div>
+            <label for="mailBody">メール本文</label>
+            <textarea id="mailBody" placeholder="見つけた語句や気づいたことを書いてください。&#10;例：録音記録という語を見つけました。&#10;例：ツキシマという名前が気になります。"></textarea>
+            <div class="small">キーワード例：録音 / 録音記録 / ツキシマ / 梨の木 / ジュジュ / 異界 / 倉庫 / 指輪 / 存在</div>
+            <div class="actions">
+              <button id="sendBtn" class="primary" type="button">送信する</button>
+              <button id="clearBtn" type="button">入力を消す</button>
+            </div>
+            <div id="status" class="status"></div>
+          </div>
+          <div id="footerNote" class="footer-note">このHTMLは単体で動作する試作です。現状は内部判定で返信を返します。実運用ではフォーム送信先や分岐ロジックを外部接続できます。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="puzzleOverlay" class="puzzle-overlay" aria-hidden="true">
+    <div class="puzzle-modal">
+      <div class="puzzle-modal-head">
+        <div class="puzzle-modal-title">確認メール</div>
+        <div class="puzzle-modal-meta">返信用確認フォーム / 回答内容は送信メールとして扱われます</div>
+      </div>
+      <div class="puzzle-modal-body">
+        <div id="puzzleText" class="puzzle-text">ここに問題文が表示されます。</div>
+        <div class="puzzle-row">
+          <input id="puzzleInput" class="puzzle-input" type="text" placeholder="答えを入力してください" />
+          <button id="puzzleBtn" class="primary" type="button">この内容で返信する</button>
+        </div>
+        <div id="puzzleStatus" class="puzzle-status"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="monologueOverlay" class="monologue-overlay" aria-hidden="true">
+    <div id="monologueBox" class="monologue-box">最上からの返事が返ってこなくなってしまった。<br>何かあったのだろうか。<div class="monologue-hint">クリック / タップで進む</div></div>
+  </div>
+
+  <div id="videoOverlay" class="video-overlay" aria-hidden="true">
+    <div class="video-modal">
+      <div class="video-modal-head">
+        <div class="video-modal-title">添付映像</div>
+        <div class="video-modal-meta">再生後、この記録は維持できない可能性があります</div>
+      </div>
+      <div class="video-modal-body">
+        <div class="video-placeholder">映像を読み込んでいます…
+
+深夜の街路 / ノイズ / 誰かの声 / 予約送信記録</div>
+        <div class="actions">
+          <button id="playVideoBtn" class="primary" type="button">映像を再生する</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      'use strict';
+      try {
+        const state = {
+          flags: {
+            introSeen:false, recordingSeen:false, tsukishimaSeen:false, pearSeen:false, jujuSeen:false,
+            puzzle1Unlocked:false, puzzle1Cleared:false, phase2Unlocked:false,
+            warehouseSeen:false, ringSeen:false, existenceSeen:false,
+            puzzle2Unlocked:false, puzzle2Cleared:false,
+            endingStarted:false, finalMailShown:false
+          },
+          pending:false
+        };
+
+        const thread = document.getElementById('thread');
+        const bodyInput = document.getElementById('mailBody');
+        const sendBtn = document.getElementById('sendBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const statusEl = document.getElementById('status');
+        const loadingScreen = document.getElementById('loadingScreen');
+        const loadingStatus = document.getElementById('loadingStatus');
+        const loadingTitle = document.getElementById('loadingTitle');
+        const appShell = document.getElementById('appShell');
+        const puzzleOverlay = document.getElementById('puzzleOverlay');
+        const puzzleText = document.getElementById('puzzleText');
+        const puzzleInput = document.getElementById('puzzleInput');
+        const puzzleBtn = document.getElementById('puzzleBtn');
+        const puzzleStatus = document.getElementById('puzzleStatus');
+        const mailShell = document.getElementById('mailShell');
+        const mailTitle = document.getElementById('mailTitle');
+        const recipientLine = document.getElementById('recipientLine');
+        const subjectLine = document.getElementById('subjectLine');
+        const formatLine = document.getElementById('formatLine');
+        const introText = document.getElementById('introText');
+        const composeBox = document.getElementById('composeBox');
+        const footerNote = document.getElementById('footerNote');
+        const noiseOverlay = document.getElementById('noiseOverlay');
+        const glitchLine = document.getElementById('glitchLine');
+        const sliceGlitch = document.getElementById('sliceGlitch');
+        const flashOverlay = document.getElementById('flashOverlay');
+        const videoOverlay = document.getElementById('videoOverlay');
+        const playVideoBtn = document.getElementById('playVideoBtn');
+        const monologueOverlay = document.getElementById('monologueOverlay');
+        const monologueBox = document.getElementById('monologueBox');
+
+        function escapeHtml(str){
+          return String(str)
+            .replace(/&/g,'&amp;')
+            .replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;')
+            .replace(/\n/g,'<br>');
+        }
+
+        function formatTime(date){
+          const h = String(date.getHours()).padStart(2,'0');
+          const m = String(date.getMinutes()).padStart(2,'0');
+          return h + ':' + m;
+        }
+
+        function scrollThreadIntoView(){
+          try{
+            thread.scrollTop = thread.scrollHeight;
+            window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
+          }catch(e){}
+        }
+
+        function addBubble(type,label,text,extraHtml,forcedTime){
+          const div = document.createElement('div');
+          const timeText = forcedTime || formatTime(new Date());
+          div.className = 'bubble ' + type;
+          div.innerHTML =
+            '<span class="bubble-label"><span>' + escapeHtml(label) + '</span><span class="bubble-time">' + escapeHtml(timeText) + '</span></span>' +
+            escapeHtml(text) +
+            (extraHtml || '');
+          thread.appendChild(div);
+          scrollThreadIntoView();
+          return div;
+        }
+
+        function removeBubble(node){
+          if(node && node.parentNode) node.parentNode.removeChild(node);
+        }
+
+        function setStatus(message,tone){
+          statusEl.className = 'status' + (tone ? ' ' + tone : '');
+          statusEl.textContent = message || '';
+        }
+
+        function setPuzzleStatus(message,tone){
+          puzzleStatus.className = 'puzzle-status' + (tone ? ' ' + tone : '');
+          puzzleStatus.textContent = message || '';
+        }
+
+        function wait(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
+
+        function getResponseTiming(found){
+          if(found.juju || found.pear) return {first:1800, second:3200};
+          if(found.tsukishima) return {first:1600, second:2800};
+          if(found.recording || found.ikai) return {first:1200, second:2200};
+          return {first:1000, second:1800};
+        }
+
+        function addTypingBubble(label){
+          return addBubble('system','SYSTEM',(label || '最上 清貴') + ' が入力中…');
+        }
+
+        function systemIntro(){
+          addBubble('system','SYSTEM','自動応答：最上清貴 宛ての連絡フォームに接続しました。\n調査に関する内容をご記入ください。');
+          addBubble('mogami','最上 清貴','ご連絡ありがとうございます。\nこの声の主について、些細なことでも構いません。何か見つけたことがあれば、お知らせください。');
+          state.flags.introSeen = true;
+        }
+
+        async function bootSequence(){
+          const steps = ['CONNECTING...','LOADING AUTO RESPONSE...','OPENING MAIL FORM...'];
+          for(let i=0;i<steps.length;i++){
+            loadingStatus.textContent = steps[i];
+            await wait(i===0 ? 650 : 520);
+          }
+          appShell.classList.add('ready');
+          systemIntro();
+          await wait(120);
+          loadingScreen.classList.add('hidden');
+        }
+
+        function detectKeywords(text){
+          return {
+            recording: /(録音|録音記録|残響|声を残す|深夜採音)/.test(text),
+            tsukishima: /(ツキシマ|月島)/.test(text),
+            pear: /(梨の木|太鼓|鈴|縄|水|帰る者を呼ぶ|儀式)/.test(text),
+            juju: /(ジュジュ|喫茶店|二階|環境音|再現音)/.test(text),
+            ikai: /(異界|誰もいない|人がいない|新宿)/.test(text),
+            warehouse: /(倉庫|呪物倉庫)/.test(text),
+            ring: /(指輪|婚約|契り)/.test(text),
+            existence: /(存在|痕跡|帰還)/.test(text)
+          };
+        }
+
+        function openPuzzle1(){
+          state.flags.puzzle1Unlocked = true;
+          puzzleInput.value = '';
+          puzzleText.textContent = '最上より確認です。\n\n「水で道を湿らせ、縄で場を結び、太鼓で門を知らせ、（　　　）で帰る者を呼ぶ」\n\n空欄に入る語を、そのまま返信してください。';
+          puzzleOverlay.classList.add('active');
+          puzzleOverlay.setAttribute('aria-hidden','false');
+          setPuzzleStatus('最上から確認メールが届いています。');
+          setTimeout(() => puzzleInput.focus(), 80);
+        }
+
+        function openPuzzle2(){
+          state.flags.puzzle2Unlocked = true;
+          puzzleInput.value = '';
+          puzzleText.textContent = '確認です。\n\nここまでの内容から考えると、裏側の世界で存在を保つために必要なのは、現実側に残る何でしょうか。\n\nもっとも適切な語を一語で返信してください。';
+          puzzleOverlay.classList.add('active');
+          puzzleOverlay.setAttribute('aria-hidden','false');
+          setPuzzleStatus('追加の確認メールが届いています。');
+          setTimeout(() => puzzleInput.focus(), 80);
+        }
+
+        function closePuzzle(){
+          puzzleOverlay.classList.remove('active');
+          puzzleOverlay.setAttribute('aria-hidden','true');
+        }
+
+        function openVideoOverlay(){
+          videoOverlay.classList.add('active');
+          videoOverlay.setAttribute('aria-hidden','false');
+        }
+
+        function closeVideoOverlay(){
+          videoOverlay.classList.remove('active');
+          videoOverlay.setAttribute('aria-hidden','true');
+        }
+
+        function openMonologue(html){
+          monologueBox.innerHTML = html + '<div class="monologue-hint">クリック / タップで進む</div>';
+          monologueOverlay.classList.add('active');
+          monologueOverlay.setAttribute('aria-hidden','false');
+        }
+
+        function closeMonologue(){
+          monologueOverlay.classList.remove('active');
+          monologueOverlay.setAttribute('aria-hidden','true');
+        }
+
+        function unlockPhase2(){
+          state.flags.puzzle1Cleared = true;
+          state.flags.phase2Unlocked = true;
+          closePuzzle();
+          setPuzzleStatus('');
+          addBubble('system','SYSTEM','認証完了：第2段階の語句が解放されました。\n新たに「倉庫」「指輪」「存在」「痕跡」「帰還」などの語に反応します。');
+        }
+
+        function checkPuzzle2Trigger(){
+          return state.flags.phase2Unlocked &&
+            state.flags.warehouseSeen &&
+            state.flags.ringSeen &&
+            state.flags.existenceSeen &&
+            !state.flags.puzzle2Unlocked &&
+            !state.flags.puzzle2Cleared;
+        }
+
+        function checkEndingTrigger(){
+          return state.flags.phase2Unlocked &&
+            state.flags.warehouseSeen &&
+            state.flags.ringSeen &&
+            state.flags.existenceSeen &&
+            state.flags.puzzle2Cleared &&
+            !state.flags.endingStarted;
+        }
+
+        function setGlitchText(el,text){
+          if(!el) return;
+          el.textContent = text;
+          el.setAttribute('data-text', text);
+        }
+
+        function startGlitchPass(level){
+          noiseOverlay.classList.add('active');
+          glitchLine.classList.add('active');
+          sliceGlitch.classList.add('active');
+          mailShell.classList.add(level === 'hard' ? 'hard-glitch' : 'shell-glitch');
+          [mailTitle, recipientLine, subjectLine].forEach(function(el){
+            el.classList.add('glitching');
+            el.setAttribute('data-text', el.textContent);
+          });
+        }
+
+        function stopGlitchPass(){
+          noiseOverlay.classList.remove('active');
+          glitchLine.classList.remove('active');
+          sliceGlitch.classList.remove('active');
+          mailShell.classList.remove('shell-glitch');
+          mailShell.classList.remove('hard-glitch');
+          [mailTitle, recipientLine, subjectLine].forEach(function(el){
+            el.classList.remove('glitching');
+            el.removeAttribute('data-text');
+          });
+        }
+
+        async function flashFrame(times){
+          for(let i=0;i<times;i++){
+            flashOverlay.classList.add('active');
+            await wait(55);
+            flashOverlay.classList.remove('active');
+            await wait(70);
+          }
+        }
+
+        async function glitchIdentityDissolve(){
+          startGlitchPass('soft');
+          const titleForms = ['最上清貴 宛て / 連絡フォーム','最上▒貴 宛て / 連絡フォーム','最▒清░ 宛て / 連絡フォーム','▒▒▒ 宛て / 連絡フォーム','連絡フォーム'];
+          const recipientForms = ['最上 清貴 <mogami-contact@example.jp>','最上 ▒貴 <mog▒mi-contact@example.jp>','最▒ 清░ <m▒g▒mi-contact@ex▒mple.jp>','送信者不明 <unknown>','宛先不明'];
+          const subjectForms = ['調査について','調▒について','▒▒について','件名不明'];
+          for(let i=0;i<titleForms.length;i++){
+            setGlitchText(mailTitle, titleForms[i]);
+            setGlitchText(recipientLine, recipientForms[Math.min(i, recipientForms.length - 1)]);
+            setGlitchText(subjectLine, subjectForms[Math.min(i, subjectForms.length - 1)]);
+            if(i === 1 || i === 3) await flashFrame(1);
+            await wait(220);
+          }
+        }
+
+        async function showFinalScheduledMail(){
+          if(state.flags.finalMailShown) return;
+          state.flags.finalMailShown = true;
+          addBubble(
+            'final-mail',
+            '最▒清░',
+            '……これが届いているなら、まだ間に合うかもしれません。\n私はもう長く保てません。\n最後に残した映像を確認してください。',
+            '<div class="mail-chip">添付: reservation_video.mp4 / 00:00</div>',
+            '00:00'
+          );
+          await wait(500);
+          addBubble('system','SYSTEM','新着メールを1件受信しました。','', '00:00');
+          openVideoOverlay();
+        }
+
+        async function waitForMonologueAdvance(){
+          return new Promise(function(resolve){
+            let done = false;
+            function cleanup(){
+              monologueOverlay.removeEventListener('click', proceed);
+              document.removeEventListener('keydown', onKey);
+            }
+            function proceed(){
+              if(done) return;
+              done = true;
+              cleanup();
+              resolve();
+            }
+            function onKey(e){
+              if(e.key === 'Enter' || e.key === ' ' || e.code === 'Space'){
+                e.preventDefault();
+                proceed();
+              }
+            }
+            monologueOverlay.addEventListener('click', proceed);
+            document.addEventListener('keydown', onKey);
+          });
+        }
+
+        async function startEndingSequence(){
+          state.flags.endingStarted = true;
+          state.pending = true;
+          closePuzzle();
+
+          setStatus('最上からの返信が途絶えています…','warn');
+          openMonologue('最上からの返事が返ってこなくなってしまった。<br>何かあったのだろうか。');
+          await waitForMonologueAdvance();
+          closeMonologue();
+          await wait(280);
+
+          setStatus('通信が不安定です…','warn');
+          addBubble('system','SYSTEM','SYSTEM WARNING: LOG INSTABILITY DETECTED');
+          await wait(900);
+          await glitchIdentityDissolve();
+          addBubble('system','SYSTEM','IDENTITY TRACE LOSS DETECTED');
+          await wait(700);
+          mailShell.classList.remove('shell-glitch');
+          mailShell.classList.add('hard-glitch');
+          await flashFrame(2);
+          await wait(250);
+          thread.classList.add('fading');
+          introText.style.opacity = '0';
+          footerNote.style.opacity = '0';
+          await wait(1300);
+          thread.innerHTML = '';
+          thread.classList.remove('fading');
+
+          document.title = '連絡フォーム';
+          subjectLine.textContent = '件名不明';
+          formatLine.textContent = '送信記録の一部が失われました';
+          loadingTitle.textContent = '連絡フォーム';
+          introText.textContent = '過去の送信記録を参照できません。';
+          introText.style.opacity = '1';
+          composeBox.classList.add('hidden');
+
+          await wait(300);
+          await showFinalScheduledMail();
+        }
+
+        async function finalEraseAfterVideo(){
+          startGlitchPass('hard');
+          setStatus('映像再生後、記録を維持できません。','warn');
+          await flashFrame(3);
+          await wait(900);
+          thread.classList.add('fading');
+          await wait(1200);
+          thread.innerHTML = '';
+          thread.classList.remove('fading');
+          mailTitle.textContent = '連絡フォーム';
+          recipientLine.textContent = '送信者不明';
+          subjectLine.textContent = '記録消失';
+          formatLine.textContent = 'この連絡先は現在使用できません';
+          introText.textContent = '該当する送信者の情報は見つかりませんでした。';
+          footerNote.textContent = 'これ以上参照できる送信記録はありません。';
+          await flashFrame(1);
+          addBubble('system','SYSTEM','過去ログは失われました。');
+          await wait(500);
+          stopGlitchPass();
+        }
+
+        async function respond(text){
+          const found = detectKeywords(text);
+          const timing = getResponseTiming(found);
+          let replied = false;
+
+          setStatus('送信済み。返信を待っています…','ok');
+          await wait(timing.first);
+          addBubble('system','SYSTEM','自動返信：内容を受け付けました。最上が確認しています。');
+
+          const typing1 = addTypingBubble('最上 清貴');
+          await wait(timing.second);
+          removeBubble(typing1);
+
+          if(found.recording && !state.flags.recordingSeen){
+            state.flags.recordingSeen = true;
+            addBubble('mogami','最上 清貴','録音……その言葉に引っかかりがあります。\n昔、何かを残そうとしていた人がいた気がするのです。\n名前までは思い出せませんが、その人は声や音に執着していたような……。');
+            replied = true;
+          }
+
+          if(found.tsukishima && !state.flags.tsukishimaSeen){
+            const t = addTypingBubble('最上 清貴');
+            await wait(1400);
+            removeBubble(t);
+            state.flags.tsukishimaSeen = true;
+            addBubble('mogami','最上 清貴','ツキシマ、ですか。\nその名前を見た途端、胸の奥がざわつきました。\nうまく言えませんが、私が忘れている何かに触れている気がします。');
+            replied = true;
+          }
+
+          if(found.pear && !state.flags.pearSeen){
+            const t = addTypingBubble('最上 清貴');
+            await wait(1500);
+            removeBubble(t);
+            state.flags.pearSeen = true;
+            addBubble('mogami','最上 清貴','梨の木、太鼓、鈴……。\nもしそれが儀式の手順に関係しているなら、音だけでは拾えない部分があるかもしれません。\n現地でしかわからない順番というものも、あるのではないでしょうか。');
+            replied = true;
+          }
+
+          if(found.juju && !state.flags.jujuSeen){
+            const t = addTypingBubble('最上 清貴');
+            await wait(1600);
+            removeBubble(t);
+            state.flags.jujuSeen = true;
+            addBubble('mogami','最上 清貴','ジュジュ……。\nその語も、まったく心当たりがないはずなのに、見覚えがあります。\nもし場所に関係するなら、そこに残された音や空気を確かめる必要があるのかもしれません。');
+            replied = true;
+          }
+
+          if(!replied && found.ikai){
+            addBubble('mogami','最上 清貴','人のいない街、異界のような場所……。\nその話は、どうしても作り話とは思えません。\nその声の主は、本当にどこか別の場所に取り残されていたのかもしれません。');
+            replied = true;
+          }
+
+          if(!replied && state.flags.phase2Unlocked){
+            if(found.warehouse && !state.flags.warehouseSeen){
+              state.flags.warehouseSeen = true;
+              addBubble('mogami','最上 清貴','倉庫……その語は妙に生々しいです。\n古い人形や置物が積まれた、息の詰まるような場所を想像してしまいます。');
+              replied = true;
+            } else if(found.ring && !state.flags.ringSeen){
+              state.flags.ringSeen = true;
+              addBubble('mogami','最上 清貴','指輪、婚約……。\nなぜでしょう、その言葉を見ると胸の奥が痛みます。\n私が失ったのは、友人だけではなかったのかもしれません。');
+              replied = true;
+            } else if(found.existence && !state.flags.existenceSeen){
+              state.flags.existenceSeen = true;
+              addBubble('mogami','最上 清貴','存在や痕跡が鍵なのだとしたら、声が残っていたことにも意味があるはずです。\nあの人は、まだ完全には消えていないのかもしれません。');
+              replied = true;
+            }
+          }
+
+          if(!replied){
+            addBubble('mogami','最上 清貴','ご連絡ありがとうございます。\n申し訳ありません、今の内容だけではまだはっきりしたことは分かりません。\n見つけた語句や、印象に残った単語があれば、そのまま送っていただけると助かります。');
+          }
+
+          if(state.flags.recordingSeen && state.flags.tsukishimaSeen && state.flags.pearSeen && !state.flags.puzzle1Unlocked){
+            const t = addTypingBubble('SYSTEM');
+            await wait(1200);
+            removeBubble(t);
+            addBubble('system','SYSTEM','ここまでの内容を確認しました。\n次に進む前に、簡単な確認問題にお答えください。');
+            openPuzzle1();
+            setStatus('確認メールを受信しました。','ok');
+            return;
+          }
+
+          if(checkPuzzle2Trigger()){
+            const t = addTypingBubble('SYSTEM');
+            await wait(1000);
+            removeBubble(t);
+            addBubble('system','SYSTEM','ここまでの内容を確認しました。\n最後の確認のため、もう一つだけお答えください。');
+            openPuzzle2();
+            setStatus('追加の確認メールを受信しました。','ok');
+            return;
+          }
+
+          if(checkEndingTrigger()){
+            await wait(900);
+            await startEndingSequence();
+          } else {
+            setStatus('返信を受信しました。','ok');
+          }
+        }
+
+        sendBtn.addEventListener('click', async function(){
+          if(state.pending){
+            setStatus('いま返信処理中です。少し待ってください。','warn');
+            return;
+          }
+          const text = bodyInput.value.trim();
+          if(!text){
+            setStatus('本文を入力してください。','warn');
+            return;
+          }
+
+          state.pending = true;
+          sendBtn.disabled = true;
+          sendBtn.textContent = '送信中…';
+          addBubble('player','送信内容',text);
+          bodyInput.value = '';
+
+          try{
+            await respond(text);
+          }catch(err){
+            console.error(err);
+            setStatus('返信処理でエラーが発生しました。','warn');
+          }finally{
+            if(!state.flags.endingStarted){
+              state.pending = false;
+              sendBtn.disabled = false;
+              sendBtn.textContent = '送信する';
+            }
+          }
+        });
+
+        clearBtn.addEventListener('click', function(){
+          bodyInput.value = '';
+          setStatus('');
+        });
+
+        puzzleBtn.addEventListener('click', function(){
+          const answer = puzzleInput.value.trim();
+          if(!answer){
+            setPuzzleStatus('答えを入力してください。','warn');
+            return;
+          }
+
+          if(state.flags.puzzle1Unlocked && !state.flags.puzzle1Cleared){
+            addBubble('player','送信内容','最上様\n\n確認の件、回答します。\n答えは「'+answer+'」です。\n\nご確認をお願いいたします。');
+
+            if(answer === '鈴' || answer === 'すず'){
+              setPuzzleStatus('送信しました。返信を待っています。','ok');
+              closePuzzle();
+              setTimeout(function(){
+                addBubble('mogami','最上 清貴','ありがとうございます。\nそうです、「鈴」で帰る者を呼ぶ……その順番に、どうやら意味がありそうです。');
+                unlockPhase2();
+              }, 1200);
+              puzzleInput.value = '';
+            } else {
+              setPuzzleStatus('送信しましたが、内容に違和感があります。別の答えで再確認してください。','warn');
+              closePuzzle();
+              setTimeout(function(){
+                addBubble('mogami','最上 清貴','ご返信ありがとうございます。\nですが、その語ではない気がします。\nもう一度だけ、手順を見直していただけないでしょうか。');
+                openPuzzle1();
+              }, 1200);
+            }
+            return;
+          }
+
+          if(state.flags.puzzle2Unlocked && !state.flags.puzzle2Cleared){
+            addBubble('player','送信内容','確認の件、回答します。\n\n答えは「'+answer+'」です。');
+
+            if(answer === '痕跡' || answer === 'こんせき' || answer === '記録' || answer === 'きろく'){
+              state.flags.puzzle2Cleared = true;
+              setPuzzleStatus('送信しました。返信を待っています。','ok');
+              closePuzzle();
+              setTimeout(function(){
+                addBubble('mogami','最上 清貴','……そうですね。\n残るのは人そのものではなく、痕跡なのかもしれません。');
+              }, 1000);
+              setTimeout(function(){
+                startEndingSequence();
+              }, 2200);
+              puzzleInput.value = '';
+            } else {
+              setPuzzleStatus('送信しましたが、答えが違うようです。もう一度だけ確認してください。','warn');
+              closePuzzle();
+              setTimeout(function(){
+                addBubble('system','SYSTEM','確認内容に不一致があります。\n最後の確認を再送します。');
+                openPuzzle2();
+              }, 1200);
+            }
+          }
+        });
+
+        playVideoBtn.addEventListener('click', async function(){
+          closeVideoOverlay();
+          await finalEraseAfterVideo();
+        });
+
+        bootSequence();
+
+      } catch (e) {
+        console.error(e);
+        try {
+          document.getElementById('loadingStatus').textContent = 'ERROR';
+          document.getElementById('loadingTitle').textContent = '読み込みエラー';
+          document.querySelector('.loading-sub').textContent = '初期化に失敗しました。別の修正版を使ってください。';
+        } catch (_) {}
+      }
+    })();
+  </script>
+</body>
+</html>

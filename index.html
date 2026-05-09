@@ -1,950 +1,189 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>最上清貴 宛て / 連絡フォーム</title>
-  <style>
-    :root {
-      --bg: #f5f5f5;
-      --panel: #ffffff;
-      --border: #d9d9d9;
-      --text: #222;
-      --muted: #666;
-      --accent: #2f6fed;
-      --accent-dark: #1f58c7;
-      --danger: #a33;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      overflow-x: hidden;
-    }
-
-    .loading-screen {
-      position: fixed; inset: 0; z-index: 9999;
-      display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(180deg, #f7f7f7 0%, #ececec 100%);
-      transition: opacity .7s ease, visibility .7s ease;
-    }
-    .loading-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-    .loading-box {
-      width: min(88vw, 420px);
-      background: rgba(255,255,255,.94);
-      border: 1px solid #d7d7d7;
-      border-radius: 16px;
-      box-shadow: 0 8px 30px rgba(0,0,0,.08);
-      padding: 22px 20px 18px;
-      text-align: center;
-      animation: loadingFloat 1.6s ease-in-out infinite;
-    }
-    .loading-title { font-size: 18px; font-weight: 700; margin: 0 0 8px; letter-spacing: .04em; }
-    .loading-sub { font-size: 13px; color: var(--muted); line-height: 1.8; margin-bottom: 14px; white-space: pre-line; }
-    .loading-bar { width: 100%; height: 8px; border-radius: 999px; background: #ececec; overflow: hidden; position: relative; margin-bottom: 12px; }
-    .loading-bar::after {
-      content: ""; position: absolute; top: 0; left: -35%; width: 35%; height: 100%;
-      background: linear-gradient(90deg, #8ab4ff 0%, #2f6fed 100%);
-      border-radius: 999px; animation: loadingBar 1.5s ease-in-out infinite;
-    }
-    .loading-status { font-size: 12px; color: var(--muted); letter-spacing: .06em; }
-
-    .noise-overlay {
-      position: fixed; inset: 0; pointer-events: none; opacity: 0; z-index: 8500;
-      background:
-        radial-gradient(circle at 20% 20%, rgba(255,255,255,.05), transparent 24%),
-        radial-gradient(circle at 80% 70%, rgba(0,0,0,.05), transparent 28%),
-        repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0px, rgba(255,255,255,.018) 1px, rgba(0,0,0,.018) 2px, rgba(0,0,0,.018) 3px),
-        linear-gradient(90deg, rgba(255,255,255,.04), rgba(0,0,0,.04));
-      mix-blend-mode: multiply;
-      transition: opacity .25s ease;
-    }
-    .noise-overlay.active { opacity: .78; animation: noiseFlash .14s steps(3) infinite; }
-
-    .glitch-line {
-      position: fixed; left: 0; right: 0; height: 3px; top: 20%;
-      background: rgba(255,255,255,.8);
-      box-shadow: 0 0 18px rgba(120,160,255,.5);
-      opacity: 0; z-index: 8600; pointer-events: none;
-    }
-    .glitch-line.active { opacity: .95; animation: glitchSweep .8s linear infinite; }
-
-    .slice-glitch {
-      position: fixed; inset: 0; pointer-events: none; z-index: 8650; opacity: 0;
-      background:
-        linear-gradient(180deg,
-          transparent 0%, transparent 22%,
-          rgba(255,255,255,.55) 22.5%, rgba(255,255,255,.1) 24%,
-          transparent 24.5%, transparent 52%,
-          rgba(0,0,0,.32) 52.5%, rgba(255,255,255,.28) 54%,
-          transparent 54.5%, transparent 100%);
-      mix-blend-mode: screen;
-    }
-    .slice-glitch.active { opacity: .9; animation: sliceShift .18s steps(2) infinite; }
-
-    .flash-overlay {
-      position: fixed; inset: 0; background: rgba(255,255,255,.92);
-      opacity: 0; pointer-events: none; z-index: 8700; transition: opacity .12s ease;
-    }
-    .flash-overlay.active { opacity: 1; }
-
-    .app-shell { opacity: 0; transform: translateY(16px); transition: opacity .7s ease, transform .7s ease; }
-    .app-shell.ready { opacity: 1; transform: translateY(0); }
-
-    .wrap { max-width: 780px; margin: 0 auto; padding: 20px 14px 40px; }
-    .mail-shell {
-      background: var(--panel);
-      border: 1px solid rgba(217,217,217,.95);
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 10px 30px rgba(0,0,0,.05), 0 2px 10px rgba(0,0,0,.04);
-      position: relative;
-      backdrop-filter: blur(2px);
-    }
-    .mail-shell::before {
-      content: "";
-      position: absolute; inset: 0;
-      background: linear-gradient(180deg, rgba(255,255,255,.45), transparent 28%);
-      pointer-events: none;
-    }
-    .mail-head {
-      padding: 16px 18px;
-      border-bottom: 1px solid rgba(217,217,217,.9);
-      background: linear-gradient(180deg, #fafafa 0%, #f6f6f6 100%);
-      transition: opacity .9s ease;
-    }
-    .mail-title { font-size: 22px; font-weight: 700; margin: 0 0 10px; }
-    .meta-row { display: grid; grid-template-columns: 72px 1fr; gap: 8px; font-size: 14px; line-height: 1.7; }
-    .meta-label { color: var(--muted); }
-    .mail-body { padding: 18px; }
-    .intro {
-      margin: 0 0 18px;
-      line-height: 1.95;
-      font-size: 15px;
-      white-space: pre-line;
-      transition: opacity .9s ease;
-      color: #2a2a2a;
-    }
-
-    .thread { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; transition: opacity 1.2s ease, filter 1.2s ease; }
-    .thread.fading { opacity: 0; filter: blur(4px); }
-
-    .bubble {
-      border: 1px solid rgba(217,217,217,.92);
-      border-radius: 14px;
-      padding: 12px 14px;
-      line-height: 1.85;
-      font-size: 15px;
-      white-space: pre-line;
-      background: linear-gradient(180deg, #fcfcfc 0%, #fafafa 100%);
-      box-shadow: 0 2px 8px rgba(0,0,0,.025);
-      transition: transform .22s ease, box-shadow .22s ease;
-    }
-    .bubble:hover { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(0,0,0,.045); }
-    .bubble.system { background: linear-gradient(180deg, #f8fbff 0%, #f4f8ff 100%); border-color: #cddcf8; }
-    .bubble.mogami { background: linear-gradient(180deg, #fffef9 0%, #fffaf0 100%); border-color: #ece3c4; }
-    .bubble.player { background: linear-gradient(180deg, #f7f7f7 0%, #f2f2f2 100%); }
-    .bubble.final-mail {
-      background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
-      border-color: #cfd5e2;
-      box-shadow: 0 8px 24px rgba(47,111,237,.08), 0 2px 8px rgba(0,0,0,.04);
-      animation: finalMailPulse 2.4s ease-in-out infinite;
-    }
-    .bubble-label {
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      margin-bottom: 6px; font-size: 12px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase;
-    }
-    .bubble-time { flex: 0 0 auto; font-size: 11px; letter-spacing: .04em; color: #8a8a8a; text-transform: none; }
-    .mail-chip {
-      display: inline-block; margin-top: 10px; border: 1px solid #cfd5e2; border-radius: 10px;
-      background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
-      padding: 10px 12px; font-size: 13px; color: #355; box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
-    }
-
-    .compose {
-      border-top: 1px solid rgba(217,217,217,.9);
-      padding-top: 16px; margin-top: 10px;
-      transition: opacity .9s ease, height .9s ease, margin .9s ease, padding .9s ease;
-    }
-    .compose.hidden { opacity: 0; height: 0; overflow: hidden; margin-top: 0; padding-top: 0; border-top: none; pointer-events: none; }
-    .compose-head { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
-    label { display: block; margin: 12px 0 6px; font-size: 13px; color: var(--muted); }
-    textarea, .puzzle-input {
-      width: 100%; border: 1px solid rgba(217,217,217,.95); border-radius: 12px; padding: 10px 12px;
-      font-size: 15px; font-family: inherit; background: #fff; color: var(--text);
-      box-shadow: inset 0 1px 2px rgba(0,0,0,.025); transition: border-color .2s ease, box-shadow .2s ease;
-    }
-    textarea:focus, .puzzle-input:focus { outline: none; border-color: #8ab4ff; box-shadow: 0 0 0 3px rgba(47,111,237,.10); }
-    textarea { min-height: 150px; resize: vertical; line-height: 1.8; }
-    .small { margin-top: 8px; font-size: 12px; color: var(--muted); line-height: 1.7; }
-    .actions, .puzzle-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
-
-    button {
-      cursor: pointer; border: 1px solid rgba(217,217,217,.95);
-      background: linear-gradient(180deg, #fff 0%, #f7f7f7 100%);
-      color: var(--text); border-radius: 12px; padding: 10px 14px; font-size: 14px;
-      box-shadow: 0 1px 2px rgba(0,0,0,.04); transition: transform .18s ease, box-shadow .18s ease;
-    }
-    button:hover:not(:disabled) {
-      background: linear-gradient(180deg, #ffffff 0%, #f2f2f2 100%);
-      transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,.06);
-    }
-    button:disabled { opacity: .7; cursor: not-allowed; }
-    .primary {
-      background: linear-gradient(180deg, #4285ff 0%, #2f6fed 100%);
-      color: #fff; border-color: #2f6fed; box-shadow: 0 6px 14px rgba(47,111,237,.18);
-    }
-    .primary:hover:not(:disabled) {
-      background: linear-gradient(180deg, #3a7df4 0%, #1f58c7 100%);
-      box-shadow: 0 8px 16px rgba(47,111,237,.24);
-    }
-
-    .status, .puzzle-status { margin-top: 10px; font-size: 13px; color: var(--muted); min-height: 1.4em; }
-    .status.ok, .puzzle-status.ok { color: #215f21; }
-    .status.warn, .puzzle-status.warn { color: var(--danger); }
-    .footer-note { margin-top: 18px; font-size: 12px; color: var(--muted); line-height: 1.8; transition: opacity .9s ease; }
-
-    .glitching { position: relative; animation: textJitter .12s steps(2) infinite; }
-    .glitching::before, .glitching::after {
-      content: attr(data-text); position: absolute; inset: 0; pointer-events: none; opacity: .75;
-    }
-    .glitching::before {
-      color: rgba(255,60,60,.72); transform: translateX(2px); mix-blend-mode: multiply; clip-path: inset(0 0 42% 0);
-    }
-    .glitching::after {
-      color: rgba(70,150,255,.72); transform: translateX(-2px); mix-blend-mode: screen; clip-path: inset(58% 0 0 0);
-    }
-    .shell-glitch { animation: shellShake .16s steps(2) infinite; filter: contrast(1.03) saturate(1.04); }
-    .hard-glitch { animation: hardShake .08s steps(2) infinite; filter: contrast(1.08) saturate(1.08); }
-
-    .puzzle-overlay, .video-overlay, .monologue-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,.38); display: none;
-      align-items: center; justify-content: center; z-index: 8000; padding: 18px;
-    }
-    .puzzle-overlay.active, .video-overlay.active, .monologue-overlay.active { display: flex; }
-    .monologue-overlay { background: rgba(10,10,14,.46); backdrop-filter: blur(2px); z-index: 8450; }
-    .monologue-box {
-      width: min(88vw, 560px); text-align: center; color: rgba(255,255,255,.96);
-      padding: 24px 20px; line-height: 2.05; font-size: 18px; letter-spacing: .02em;
-      text-shadow: 0 2px 14px rgba(0,0,0,.45);
-      opacity: 0; transform: translateY(8px);
-    }
-    .monologue-overlay.active .monologue-box { opacity: 1; transform: translateY(0); }
-    .monologue-hint { margin-top: 18px; font-size: 12px; letter-spacing: .08em; color: rgba(255,255,255,.72); }
-
-    .puzzle-modal, .video-modal {
-      width: min(92vw, 520px);
-      background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
-      border: 1px solid #d6d9e6; border-radius: 16px; box-shadow: 0 18px 50px rgba(0,0,0,.18);
-      overflow: hidden; transform: translateY(8px); animation: puzzlePop .22s ease forwards;
-    }
-    .puzzle-modal-head, .video-modal-head {
-      padding: 14px 16px; border-bottom: 1px solid #e5e7f0; background: #f8fbff;
-    }
-    .puzzle-modal-title, .video-modal-title { font-size: 16px; font-weight: 700; margin: 0 0 4px; }
-    .puzzle-modal-meta, .video-modal-meta { font-size: 12px; color: var(--muted); }
-    .puzzle-modal-body, .video-modal-body { padding: 16px; }
-    .puzzle-text { font-size: 14px; line-height: 1.9; color: #334; white-space: pre-line; margin-bottom: 12px; }
-    .video-placeholder {
-      border: 1px solid #ccd3e0; border-radius: 12px;
-      background:
-        radial-gradient(circle at 30% 20%, rgba(255,255,255,.08), transparent 18%),
-        linear-gradient(180deg, #111 0%, #2b2b2b 100%);
-      color: #eee; min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      gap: 10px; text-align: center; padding: 20px; white-space: pre-line;
-      box-shadow: inset 0 0 30px rgba(255,255,255,.04);
-    }
-
-    @keyframes loadingBar { 0% { left: -35%; } 100% { left: 100%; } }
-    @keyframes loadingFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-    @keyframes puzzlePop { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
-    @keyframes noiseFlash {
-      0% { transform: translateX(0) translateY(0); opacity: .52; }
-      20% { transform: translateX(-2px) translateY(1px); opacity: .88; }
-      40% { transform: translateX(2px) translateY(-1px); opacity: .62; }
-      60% { transform: translateX(-1px) translateY(2px); opacity: .82; }
-      80% { transform: translateX(1px) translateY(-2px); opacity: .70; }
-      100% { transform: translateX(0) translateY(0); opacity: .58; }
-    }
-    @keyframes finalMailPulse { 0%, 100% { box-shadow: 0 8px 24px rgba(47,111,237,.08), 0 2px 8px rgba(0,0,0,.04); } 50% { box-shadow: 0 12px 28px rgba(47,111,237,.16), 0 4px 12px rgba(0,0,0,.06); } }
-    @keyframes textJitter { 0% { transform: translate(0,0); } 25% { transform: translate(-1px,0); } 50% { transform: translate(1px,0); } 75% { transform: translate(0,1px); } 100% { transform: translate(0,0); } }
-    @keyframes shellShake { 0% { transform: translate(0,0); } 20% { transform: translate(-1px,0); } 40% { transform: translate(1px,0); } 60% { transform: translate(-1px,1px); } 80% { transform: translate(1px,-1px); } 100% { transform: translate(0,0); } }
-    @keyframes hardShake { 0% { transform: translate(0,0); } 20% { transform: translate(-2px,1px); } 40% { transform: translate(2px,-1px); } 60% { transform: translate(-1px,-2px); } 80% { transform: translate(2px,1px); } 100% { transform: translate(0,0); } }
-    @keyframes sliceShift { 0% { transform: translateX(0); } 33% { transform: translateX(-6px); } 66% { transform: translateX(8px); } 100% { transform: translateX(0); } }
-    @keyframes glitchSweep { 0% { top: 6%; } 100% { top: 92%; } }
-
-    @media (max-width: 640px) {
-      .mail-title { font-size: 19px; }
-      .meta-row { grid-template-columns: 58px 1fr; font-size: 13px; }
-      .mail-body { padding: 14px; }
-      .bubble { font-size: 14px; line-height: 1.8; border-radius: 12px; }
-      textarea { min-height: 130px; }
-      .loading-box { padding: 18px 16px 15px; border-radius: 14px; }
-      .loading-title { font-size: 16px; }
-      .loading-sub { font-size: 12px; }
-      .loading-status { font-size: 11px; }
-      .video-placeholder { min-height: 180px; }
-      button { width: 100%; }
-      .actions, .puzzle-row { gap: 8px; }
-      .mail-shell, .puzzle-modal, .video-modal { border-radius: 14px; }
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>最上清貴との通信｜調査端末</title>
+<style>
+:root{--bg:#0d0f12;--panel:#171b22;--panel2:#202630;--ink:#eee7d9;--muted:#9f9688;--line:#343b46;--gold:#c49a5a;--red:#a6423a;--green:#7fa27d;--blue:#7f9fb7;--shadow:rgba(0,0,0,.35)}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 45% 42%,rgba(196,154,90,.10),transparent 24%),radial-gradient(circle at 55% 55%,rgba(127,159,183,.08),transparent 26%),var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;line-height:1.75}button,input,textarea{font:inherit}a{color:var(--gold);text-decoration:none}a:hover{text-decoration:underline}
+.visualizer-bg{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;opacity:.62}.orb{position:absolute;border-radius:50%;filter:blur(50px);opacity:.28;left:50%;top:50%;transform:translate(-50%,-50%);animation:orbDrift 5s ease-in-out infinite alternate,orbPulse 2s ease-in-out infinite}.orb.one{width:min(90vw,620px);height:min(90vw,620px);background:radial-gradient(circle,rgba(196,154,90,.55),rgba(196,154,90,.17) 46%,transparent 72%)}.orb.two{width:min(78vw,520px);height:min(78vw,520px);background:radial-gradient(circle,rgba(127,159,183,.50),rgba(127,159,183,.15) 44%,transparent 72%);animation-delay:-1.4s}.orb.three{width:min(62vw,420px);height:min(62vw,420px);background:radial-gradient(circle,rgba(166,66,58,.40),rgba(166,66,58,.13) 44%,transparent 72%);animation-delay:-.7s}@keyframes orbDrift{0%{margin-left:-5vw;margin-top:4vh}50%{margin-left:4vw;margin-top:-3vh}100%{margin-left:7vw;margin-top:3vh}}@keyframes orbPulse{0%{scale:.9;opacity:.24}55%{scale:1.16;opacity:.42}100%{scale:1.02;opacity:.30}}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(180deg,rgba(255,255,255,.018) 0,rgba(255,255,255,.018) 1px,transparent 1px,transparent 4px);opacity:.3;z-index:0}header,main,.toast,.sending,.boot{position:relative;z-index:1}
+.boot{position:fixed;inset:0;background:#070809;z-index:999;display:grid;place-items:center;padding:24px;transition:opacity .55s ease,visibility .55s ease}.boot.hidden{opacity:0;visibility:hidden}.boot-box{width:min(520px,100%);background:#0f1318;border:1px solid #2b3440;border-radius:20px;padding:26px;box-shadow:0 22px 70px rgba(0,0,0,.55)}.boot-title{color:var(--gold);letter-spacing:.12em;font-weight:700;margin-bottom:16px}.boot-lines{font-family:"Courier New",monospace;font-size:13px;color:#c8bfaa;min-height:112px;white-space:pre-wrap}.bar{height:7px;border:1px solid #39414a;border-radius:99px;overflow:hidden;background:#08090b;margin-top:18px}.bar span{display:block;height:100%;width:0;background:linear-gradient(90deg,#7fa27d,#c49a5a);animation:load 2.4s ease forwards}@keyframes load{to{width:100%}}
+header{position:sticky;top:0;z-index:40;background:rgba(13,15,18,.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}.head{max-width:860px;margin:0 auto;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px}.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.04em}.mark{width:34px;height:34px;border-radius:50%;border:1px solid var(--gold);display:grid;place-items:center;color:var(--gold);font-family:Georgia,serif;animation:pulseMark 2.8s ease-in-out infinite}@keyframes pulseMark{0%,100%{box-shadow:0 0 0 rgba(196,154,90,0)}50%{box-shadow:0 0 18px rgba(196,154,90,.34)}}.pill{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:4px 8px;background:rgba(255,255,255,.03)}
+main{max-width:860px;margin:0 auto;padding:18px 14px 56px}.start-card,.panel{background:rgba(23,27,34,.92);border:1px solid var(--line);border-radius:22px;box-shadow:0 18px 50px var(--shadow)}.start-card{padding:22px;margin:18px 0}.start-card h1{font-size:28px;margin:0 0 10px;line-height:1.3}.start-card p{color:#ccc1b0;margin:0 0 16px}.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.btn{border:1px solid var(--line);background:linear-gradient(#2a313c,#171b22);color:var(--ink);border-radius:15px;padding:11px 13px;cursor:pointer;text-align:center}.btn.primary{background:linear-gradient(#9a7242,#6f4c2b);border-color:#b9884d;color:#fff}.btn.danger{background:linear-gradient(#74352f,#421f1d);border-color:#8d4a43}.btn:hover{filter:brightness(1.08)}.btn:disabled{opacity:.45;cursor:not-allowed}
+.objective{background:rgba(196,154,90,.10);border:1px solid rgba(196,154,90,.38);border-radius:14px;padding:9px 11px;margin-bottom:8px;display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start}.objective .label{font-size:10px;color:var(--gold);font-weight:700;letter-spacing:.1em;white-space:nowrap}.objective p{margin:0;font-size:12px;line-height:1.55;color:#ddceb6}.progress{display:flex;gap:6px;margin-bottom:9px}.box{background:rgba(32,38,48,.82);border:1px solid var(--line);border-radius:11px;padding:6px 9px}.box small{font-size:10px;color:var(--muted);margin-right:4px}.box strong{font-size:12px;color:#eadbb8}.panel{padding:11px;margin-bottom:10px}.panel h2{font-size:14px;margin:0 0 8px;color:#f0d39a}.mini{font-size:11px;color:var(--muted);line-height:1.5}.messages{display:flex;flex-direction:column;gap:9px;max-height:54vh;min-height:310px;overflow-y:auto;padding:10px;border:1px solid rgba(196,154,90,.28);border-radius:18px;background:rgba(0,0,0,.14);scroll-behavior:smooth}.msg{border:1px solid var(--line);border-radius:18px;padding:12px 13px;background:var(--panel2);animation:msgIn .25s ease both}@keyframes msgIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}.msg.mogami{border-color:rgba(196,154,90,.48);border-left:4px solid var(--gold);background:rgba(196,154,90,.11)}.msg.player{border-color:rgba(127,159,183,.32);background:rgba(127,159,183,.07)}.msg .from{font-size:12px;color:var(--muted);margin-bottom:4px}.msg.mogami .from{color:#f0d39a;font-weight:700}.msg .text{white-space:pre-wrap;font-size:14px;line-height:1.72}.form textarea{width:100%;min-height:92px;resize:vertical;border:1px solid var(--line);border-radius:16px;background:#0e1116;color:var(--ink);padding:12px;outline:none}.form textarea:focus{border-color:var(--gold)}.evidence-area{display:grid;gap:8px;max-height:235px;overflow:auto}.empty{color:var(--muted);font-size:14px;background:#0e1116;border:1px dashed var(--line);border-radius:16px;padding:14px}.ev{display:flex;gap:10px;align-items:flex-start;background:#0e1116;border:1px solid var(--line);border-radius:16px;padding:10px}.ev input{margin-top:5px;transform:scale(1.1)}.ev-title{display:block;color:#eee1c8;font-weight:700;font-size:13px}.ev-meta{display:block;color:var(--muted);font-size:11px}.ev-desc{display:block;color:#bfb5a6;font-size:11px;margin-top:2px}.send-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.choice-grid{display:grid;gap:9px}.choice-btn{width:100%;text-align:left;border:1px solid var(--line);background:linear-gradient(#202630,#12161d);color:var(--ink);border-radius:16px;padding:12px;cursor:pointer}.choice-btn:hover{border-color:var(--gold)}.links{display:grid;grid-template-columns:1fr 1fr;gap:10px}.link-card{display:block;background:#0e1116;border:1px solid var(--line);border-radius:16px;padding:12px}.link-card strong{display:block;color:var(--ink)}.link-card span{font-size:12px;color:var(--muted)}.spell{width:100%;min-height:80px;resize:vertical;border:1px solid var(--line);border-radius:16px;background:#0e1116;color:#d8c19a;padding:12px;font-family:"Courier New",monospace;font-size:13px}.compact-details summary{cursor:pointer;color:#f0d39a}.compact-body{padding-top:10px}.hidden{display:none!important}.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(20px);opacity:0;background:#211a13;border:1px solid rgba(196,154,90,.5);color:#f0d39a;border-radius:14px;padding:10px 14px;z-index:1000;transition:.25s}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}.sending{position:fixed;inset:0;background:rgba(5,6,8,.54);z-index:900;display:grid;place-items:center;opacity:0;visibility:hidden;transition:.22s}.sending.show{opacity:1;visibility:visible}.sending-box{background:#11161d;border:1px solid rgba(196,154,90,.48);border-radius:18px;padding:18px 22px;color:#f0d39a;min-width:230px;text-align:center}.dots::after{content:"";animation:dots 1.2s infinite}@keyframes dots{0%{content:""}33%{content:"."}66%{content:".."}100%{content:"..."}}.bgm-row{display:flex;gap:8px;align-items:center}.bgm-row .btn{padding:8px 10px;min-width:auto}
+@media(max-width:640px){.head{padding:10px 12px}.brand span:last-child{font-size:14px}.pill{display:none}main{padding:12px 10px 42px}.actions,.send-row,.links{grid-template-columns:1fr}.start-card h1{font-size:23px}.panel{border-radius:18px}.messages{min-height:300px}.orb{filter:blur(42px)}}
+@media(prefers-reduced-motion:reduce){.orb,.mark{animation:none!important}}
+</style>
 </head>
 <body>
-  <div id="loadingScreen" class="loading-screen">
-    <div class="loading-box">
-      <div id="loadingTitle" class="loading-title">最上清貴 連絡フォーム</div>
-      <div class="loading-sub">接続を確認しています…
-過去の送信履歴と自動応答を読み込んでいます。</div>
-      <div class="loading-bar"></div>
-      <div id="loadingStatus" class="loading-status">CONNECTING...</div>
-    </div>
-  </div>
-
-  <div id="noiseOverlay" class="noise-overlay"></div>
-  <div id="glitchLine" class="glitch-line"></div>
-  <div id="sliceGlitch" class="slice-glitch"></div>
-  <div id="flashOverlay" class="flash-overlay"></div>
-
-  <div id="appShell" class="app-shell">
-    <div class="wrap">
-      <div id="mailShell" class="mail-shell">
-        <div class="mail-head">
-          <h1 id="mailTitle" class="mail-title">最上清貴 宛て / 連絡フォーム</h1>
-          <div class="meta-row"><div class="meta-label">宛先</div><div id="recipientLine">最上 清貴 &lt;mogami-contact@example.jp&gt;</div></div>
-          <div class="meta-row"><div class="meta-label">件名</div><div id="subjectLine">調査について</div></div>
-          <div class="meta-row"><div class="meta-label">形式</div><div id="formatLine">表向きはメール送信フォーム / 内部的には進行型テキスト演出</div></div>
-        </div>
-        <div class="mail-body">
-          <p id="introText" class="intro">このフォームは、最上清貴へ調査内容を報告するためのものです。
-
-入力内容や選択した語句に応じて、返信内容や進行が変化します。
-見た目はメールフォームですが、実際にはノベルゲームのように進行していきます。</p>
-          <div id="thread" class="thread"></div>
-          <div id="composeBox" class="compose">
-            <div class="compose-head">本文を入力</div>
-            <label for="mailBody">メール本文</label>
-            <textarea id="mailBody" placeholder="見つけた語句や気づいたことを書いてください。&#10;例：録音記録という語を見つけました。&#10;例：ツキシマという名前が気になります。"></textarea>
-            <div class="small">キーワード例：録音 / 録音記録 / ツキシマ / 梨の木 / ジュジュ / 異界 / 倉庫 / 指輪 / 存在</div>
-            <div class="actions">
-              <button id="sendBtn" class="primary" type="button">送信する</button>
-              <button id="clearBtn" type="button">入力を消す</button>
-            </div>
-            <div id="status" class="status"></div>
-          </div>
-          <div id="footerNote" class="footer-note">このHTMLは単体で動作する試作です。現状は内部判定で返信を返します。実運用ではフォーム送信先や分岐ロジックを外部接続できます。</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div id="puzzleOverlay" class="puzzle-overlay" aria-hidden="true">
-    <div class="puzzle-modal">
-      <div class="puzzle-modal-head">
-        <div class="puzzle-modal-title">確認メール</div>
-        <div class="puzzle-modal-meta">返信用確認フォーム / 回答内容は送信メールとして扱われます</div>
-      </div>
-      <div class="puzzle-modal-body">
-        <div id="puzzleText" class="puzzle-text">ここに問題文が表示されます。</div>
-        <div class="puzzle-row">
-          <input id="puzzleInput" class="puzzle-input" type="text" placeholder="答えを入力してください" />
-          <button id="puzzleBtn" class="primary" type="button">この内容で返信する</button>
-        </div>
-        <div id="puzzleStatus" class="puzzle-status"></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="monologueOverlay" class="monologue-overlay" aria-hidden="true">
-    <div id="monologueBox" class="monologue-box">最上からの返事が返ってこなくなってしまった。<br>何かあったのだろうか。<div class="monologue-hint">クリック / タップで進む</div></div>
-  </div>
-
-  <div id="videoOverlay" class="video-overlay" aria-hidden="true">
-    <div class="video-modal">
-      <div class="video-modal-head">
-        <div class="video-modal-title">添付映像</div>
-        <div class="video-modal-meta">再生後、この記録は維持できない可能性があります</div>
-      </div>
-      <div class="video-modal-body">
-        <div class="video-placeholder">映像を読み込んでいます…
-
-深夜の街路 / ノイズ / 誰かの声 / 予約送信記録</div>
-        <div class="actions">
-          <button id="playVideoBtn" class="primary" type="button">映像を再生する</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    (function(){
-      'use strict';
-      try {
-        const state = {
-          flags: {
-            introSeen:false, recordingSeen:false, tsukishimaSeen:false, pearSeen:false, jujuSeen:false,
-            puzzle1Unlocked:false, puzzle1Cleared:false, phase2Unlocked:false,
-            warehouseSeen:false, ringSeen:false, existenceSeen:false,
-            puzzle2Unlocked:false, puzzle2Cleared:false,
-            endingStarted:false, finalMailShown:false
-          },
-          pending:false
-        };
-
-        const thread = document.getElementById('thread');
-        const bodyInput = document.getElementById('mailBody');
-        const sendBtn = document.getElementById('sendBtn');
-        const clearBtn = document.getElementById('clearBtn');
-        const statusEl = document.getElementById('status');
-        const loadingScreen = document.getElementById('loadingScreen');
-        const loadingStatus = document.getElementById('loadingStatus');
-        const loadingTitle = document.getElementById('loadingTitle');
-        const appShell = document.getElementById('appShell');
-        const puzzleOverlay = document.getElementById('puzzleOverlay');
-        const puzzleText = document.getElementById('puzzleText');
-        const puzzleInput = document.getElementById('puzzleInput');
-        const puzzleBtn = document.getElementById('puzzleBtn');
-        const puzzleStatus = document.getElementById('puzzleStatus');
-        const mailShell = document.getElementById('mailShell');
-        const mailTitle = document.getElementById('mailTitle');
-        const recipientLine = document.getElementById('recipientLine');
-        const subjectLine = document.getElementById('subjectLine');
-        const formatLine = document.getElementById('formatLine');
-        const introText = document.getElementById('introText');
-        const composeBox = document.getElementById('composeBox');
-        const footerNote = document.getElementById('footerNote');
-        const noiseOverlay = document.getElementById('noiseOverlay');
-        const glitchLine = document.getElementById('glitchLine');
-        const sliceGlitch = document.getElementById('sliceGlitch');
-        const flashOverlay = document.getElementById('flashOverlay');
-        const videoOverlay = document.getElementById('videoOverlay');
-        const playVideoBtn = document.getElementById('playVideoBtn');
-        const monologueOverlay = document.getElementById('monologueOverlay');
-        const monologueBox = document.getElementById('monologueBox');
-
-        function escapeHtml(str){
-          return String(str)
-            .replace(/&/g,'&amp;')
-            .replace(/</g,'&lt;')
-            .replace(/>/g,'&gt;')
-            .replace(/\n/g,'<br>');
-        }
-
-        function formatTime(date){
-          const h = String(date.getHours()).padStart(2,'0');
-          const m = String(date.getMinutes()).padStart(2,'0');
-          return h + ':' + m;
-        }
-
-        function scrollThreadIntoView(){
-          try{
-            thread.scrollTop = thread.scrollHeight;
-            window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
-          }catch(e){}
-        }
-
-        function addBubble(type,label,text,extraHtml,forcedTime){
-          const div = document.createElement('div');
-          const timeText = forcedTime || formatTime(new Date());
-          div.className = 'bubble ' + type;
-          div.innerHTML =
-            '<span class="bubble-label"><span>' + escapeHtml(label) + '</span><span class="bubble-time">' + escapeHtml(timeText) + '</span></span>' +
-            escapeHtml(text) +
-            (extraHtml || '');
-          thread.appendChild(div);
-          scrollThreadIntoView();
-          return div;
-        }
-
-        function removeBubble(node){
-          if(node && node.parentNode) node.parentNode.removeChild(node);
-        }
-
-        function setStatus(message,tone){
-          statusEl.className = 'status' + (tone ? ' ' + tone : '');
-          statusEl.textContent = message || '';
-        }
-
-        function setPuzzleStatus(message,tone){
-          puzzleStatus.className = 'puzzle-status' + (tone ? ' ' + tone : '');
-          puzzleStatus.textContent = message || '';
-        }
-
-        function wait(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
-
-        function getResponseTiming(found){
-          if(found.juju || found.pear) return {first:1800, second:3200};
-          if(found.tsukishima) return {first:1600, second:2800};
-          if(found.recording || found.ikai) return {first:1200, second:2200};
-          return {first:1000, second:1800};
-        }
-
-        function addTypingBubble(label){
-          return addBubble('system','SYSTEM',(label || '最上 清貴') + ' が入力中…');
-        }
-
-        function systemIntro(){
-          addBubble('system','SYSTEM','自動応答：最上清貴 宛ての連絡フォームに接続しました。\n調査に関する内容をご記入ください。');
-          addBubble('mogami','最上 清貴','ご連絡ありがとうございます。\nこの声の主について、些細なことでも構いません。何か見つけたことがあれば、お知らせください。');
-          state.flags.introSeen = true;
-        }
-
-        async function bootSequence(){
-          const steps = ['CONNECTING...','LOADING AUTO RESPONSE...','OPENING MAIL FORM...'];
-          for(let i=0;i<steps.length;i++){
-            loadingStatus.textContent = steps[i];
-            await wait(i===0 ? 650 : 520);
-          }
-          appShell.classList.add('ready');
-          systemIntro();
-          await wait(120);
-          loadingScreen.classList.add('hidden');
-        }
-
-        function detectKeywords(text){
-          return {
-            recording: /(録音|録音記録|残響|声を残す|深夜採音)/.test(text),
-            tsukishima: /(ツキシマ|月島)/.test(text),
-            pear: /(梨の木|太鼓|鈴|縄|水|帰る者を呼ぶ|儀式)/.test(text),
-            juju: /(ジュジュ|喫茶店|二階|環境音|再現音)/.test(text),
-            ikai: /(異界|誰もいない|人がいない|新宿)/.test(text),
-            warehouse: /(倉庫|呪物倉庫)/.test(text),
-            ring: /(指輪|婚約|契り)/.test(text),
-            existence: /(存在|痕跡|帰還)/.test(text)
-          };
-        }
-
-        function openPuzzle1(){
-          state.flags.puzzle1Unlocked = true;
-          puzzleInput.value = '';
-          puzzleText.textContent = '最上より確認です。\n\n「水で道を湿らせ、縄で場を結び、太鼓で門を知らせ、（　　　）で帰る者を呼ぶ」\n\n空欄に入る語を、そのまま返信してください。';
-          puzzleOverlay.classList.add('active');
-          puzzleOverlay.setAttribute('aria-hidden','false');
-          setPuzzleStatus('最上から確認メールが届いています。');
-          setTimeout(() => puzzleInput.focus(), 80);
-        }
-
-        function openPuzzle2(){
-          state.flags.puzzle2Unlocked = true;
-          puzzleInput.value = '';
-          puzzleText.textContent = '確認です。\n\nここまでの内容から考えると、裏側の世界で存在を保つために必要なのは、現実側に残る何でしょうか。\n\nもっとも適切な語を一語で返信してください。';
-          puzzleOverlay.classList.add('active');
-          puzzleOverlay.setAttribute('aria-hidden','false');
-          setPuzzleStatus('追加の確認メールが届いています。');
-          setTimeout(() => puzzleInput.focus(), 80);
-        }
-
-        function closePuzzle(){
-          puzzleOverlay.classList.remove('active');
-          puzzleOverlay.setAttribute('aria-hidden','true');
-        }
-
-        function openVideoOverlay(){
-          videoOverlay.classList.add('active');
-          videoOverlay.setAttribute('aria-hidden','false');
-        }
-
-        function closeVideoOverlay(){
-          videoOverlay.classList.remove('active');
-          videoOverlay.setAttribute('aria-hidden','true');
-        }
-
-        function openMonologue(html){
-          monologueBox.innerHTML = html + '<div class="monologue-hint">クリック / タップで進む</div>';
-          monologueOverlay.classList.add('active');
-          monologueOverlay.setAttribute('aria-hidden','false');
-        }
-
-        function closeMonologue(){
-          monologueOverlay.classList.remove('active');
-          monologueOverlay.setAttribute('aria-hidden','true');
-        }
-
-        function unlockPhase2(){
-          state.flags.puzzle1Cleared = true;
-          state.flags.phase2Unlocked = true;
-          closePuzzle();
-          setPuzzleStatus('');
-          addBubble('system','SYSTEM','認証完了：第2段階の語句が解放されました。\n新たに「倉庫」「指輪」「存在」「痕跡」「帰還」などの語に反応します。');
-        }
-
-        function checkPuzzle2Trigger(){
-          return state.flags.phase2Unlocked &&
-            state.flags.warehouseSeen &&
-            state.flags.ringSeen &&
-            state.flags.existenceSeen &&
-            !state.flags.puzzle2Unlocked &&
-            !state.flags.puzzle2Cleared;
-        }
-
-        function checkEndingTrigger(){
-          return state.flags.phase2Unlocked &&
-            state.flags.warehouseSeen &&
-            state.flags.ringSeen &&
-            state.flags.existenceSeen &&
-            state.flags.puzzle2Cleared &&
-            !state.flags.endingStarted;
-        }
-
-        function setGlitchText(el,text){
-          if(!el) return;
-          el.textContent = text;
-          el.setAttribute('data-text', text);
-        }
-
-        function startGlitchPass(level){
-          noiseOverlay.classList.add('active');
-          glitchLine.classList.add('active');
-          sliceGlitch.classList.add('active');
-          mailShell.classList.add(level === 'hard' ? 'hard-glitch' : 'shell-glitch');
-          [mailTitle, recipientLine, subjectLine].forEach(function(el){
-            el.classList.add('glitching');
-            el.setAttribute('data-text', el.textContent);
-          });
-        }
-
-        function stopGlitchPass(){
-          noiseOverlay.classList.remove('active');
-          glitchLine.classList.remove('active');
-          sliceGlitch.classList.remove('active');
-          mailShell.classList.remove('shell-glitch');
-          mailShell.classList.remove('hard-glitch');
-          [mailTitle, recipientLine, subjectLine].forEach(function(el){
-            el.classList.remove('glitching');
-            el.removeAttribute('data-text');
-          });
-        }
-
-        async function flashFrame(times){
-          for(let i=0;i<times;i++){
-            flashOverlay.classList.add('active');
-            await wait(55);
-            flashOverlay.classList.remove('active');
-            await wait(70);
-          }
-        }
-
-        async function glitchIdentityDissolve(){
-          startGlitchPass('soft');
-          const titleForms = ['最上清貴 宛て / 連絡フォーム','最上▒貴 宛て / 連絡フォーム','最▒清░ 宛て / 連絡フォーム','▒▒▒ 宛て / 連絡フォーム','連絡フォーム'];
-          const recipientForms = ['最上 清貴 <mogami-contact@example.jp>','最上 ▒貴 <mog▒mi-contact@example.jp>','最▒ 清░ <m▒g▒mi-contact@ex▒mple.jp>','送信者不明 <unknown>','宛先不明'];
-          const subjectForms = ['調査について','調▒について','▒▒について','件名不明'];
-          for(let i=0;i<titleForms.length;i++){
-            setGlitchText(mailTitle, titleForms[i]);
-            setGlitchText(recipientLine, recipientForms[Math.min(i, recipientForms.length - 1)]);
-            setGlitchText(subjectLine, subjectForms[Math.min(i, subjectForms.length - 1)]);
-            if(i === 1 || i === 3) await flashFrame(1);
-            await wait(220);
-          }
-        }
-
-        async function showFinalScheduledMail(){
-          if(state.flags.finalMailShown) return;
-          state.flags.finalMailShown = true;
-          addBubble(
-            'final-mail',
-            '最▒清░',
-            '……これが届いているなら、まだ間に合うかもしれません。\n私はもう長く保てません。\n最後に残した映像を確認してください。',
-            '<div class="mail-chip">添付: reservation_video.mp4 / 00:00</div>',
-            '00:00'
-          );
-          await wait(500);
-          addBubble('system','SYSTEM','新着メールを1件受信しました。','', '00:00');
-          openVideoOverlay();
-        }
-
-        async function waitForMonologueAdvance(){
-          return new Promise(function(resolve){
-            let done = false;
-            function cleanup(){
-              monologueOverlay.removeEventListener('click', proceed);
-              document.removeEventListener('keydown', onKey);
-            }
-            function proceed(){
-              if(done) return;
-              done = true;
-              cleanup();
-              resolve();
-            }
-            function onKey(e){
-              if(e.key === 'Enter' || e.key === ' ' || e.code === 'Space'){
-                e.preventDefault();
-                proceed();
-              }
-            }
-            monologueOverlay.addEventListener('click', proceed);
-            document.addEventListener('keydown', onKey);
-          });
-        }
-
-        async function startEndingSequence(){
-          state.flags.endingStarted = true;
-          state.pending = true;
-          closePuzzle();
-
-          setStatus('最上からの返信が途絶えています…','warn');
-          openMonologue('最上からの返事が返ってこなくなってしまった。<br>何かあったのだろうか。');
-          await waitForMonologueAdvance();
-          closeMonologue();
-          await wait(280);
-
-          setStatus('通信が不安定です…','warn');
-          addBubble('system','SYSTEM','SYSTEM WARNING: LOG INSTABILITY DETECTED');
-          await wait(900);
-          await glitchIdentityDissolve();
-          addBubble('system','SYSTEM','IDENTITY TRACE LOSS DETECTED');
-          await wait(700);
-          mailShell.classList.remove('shell-glitch');
-          mailShell.classList.add('hard-glitch');
-          await flashFrame(2);
-          await wait(250);
-          thread.classList.add('fading');
-          introText.style.opacity = '0';
-          footerNote.style.opacity = '0';
-          await wait(1300);
-          thread.innerHTML = '';
-          thread.classList.remove('fading');
-
-          document.title = '連絡フォーム';
-          subjectLine.textContent = '件名不明';
-          formatLine.textContent = '送信記録の一部が失われました';
-          loadingTitle.textContent = '連絡フォーム';
-          introText.textContent = '過去の送信記録を参照できません。';
-          introText.style.opacity = '1';
-          composeBox.classList.add('hidden');
-
-          await wait(300);
-          await showFinalScheduledMail();
-        }
-
-        async function finalEraseAfterVideo(){
-          startGlitchPass('hard');
-          setStatus('映像再生後、記録を維持できません。','warn');
-          await flashFrame(3);
-          await wait(900);
-          thread.classList.add('fading');
-          await wait(1200);
-          thread.innerHTML = '';
-          thread.classList.remove('fading');
-          mailTitle.textContent = '連絡フォーム';
-          recipientLine.textContent = '送信者不明';
-          subjectLine.textContent = '記録消失';
-          formatLine.textContent = 'この連絡先は現在使用できません';
-          introText.textContent = '該当する送信者の情報は見つかりませんでした。';
-          footerNote.textContent = 'これ以上参照できる送信記録はありません。';
-          await flashFrame(1);
-          addBubble('system','SYSTEM','過去ログは失われました。');
-          await wait(500);
-          stopGlitchPass();
-        }
-
-        async function respond(text){
-          const found = detectKeywords(text);
-          const timing = getResponseTiming(found);
-          let replied = false;
-
-          setStatus('送信済み。返信を待っています…','ok');
-          await wait(timing.first);
-          addBubble('system','SYSTEM','自動返信：内容を受け付けました。最上が確認しています。');
-
-          const typing1 = addTypingBubble('最上 清貴');
-          await wait(timing.second);
-          removeBubble(typing1);
-
-          if(found.recording && !state.flags.recordingSeen){
-            state.flags.recordingSeen = true;
-            addBubble('mogami','最上 清貴','録音……その言葉に引っかかりがあります。\n昔、何かを残そうとしていた人がいた気がするのです。\n名前までは思い出せませんが、その人は声や音に執着していたような……。');
-            replied = true;
-          }
-
-          if(found.tsukishima && !state.flags.tsukishimaSeen){
-            const t = addTypingBubble('最上 清貴');
-            await wait(1400);
-            removeBubble(t);
-            state.flags.tsukishimaSeen = true;
-            addBubble('mogami','最上 清貴','ツキシマ、ですか。\nその名前を見た途端、胸の奥がざわつきました。\nうまく言えませんが、私が忘れている何かに触れている気がします。');
-            replied = true;
-          }
-
-          if(found.pear && !state.flags.pearSeen){
-            const t = addTypingBubble('最上 清貴');
-            await wait(1500);
-            removeBubble(t);
-            state.flags.pearSeen = true;
-            addBubble('mogami','最上 清貴','梨の木、太鼓、鈴……。\nもしそれが儀式の手順に関係しているなら、音だけでは拾えない部分があるかもしれません。\n現地でしかわからない順番というものも、あるのではないでしょうか。');
-            replied = true;
-          }
-
-          if(found.juju && !state.flags.jujuSeen){
-            const t = addTypingBubble('最上 清貴');
-            await wait(1600);
-            removeBubble(t);
-            state.flags.jujuSeen = true;
-            addBubble('mogami','最上 清貴','ジュジュ……。\nその語も、まったく心当たりがないはずなのに、見覚えがあります。\nもし場所に関係するなら、そこに残された音や空気を確かめる必要があるのかもしれません。');
-            replied = true;
-          }
-
-          if(!replied && found.ikai){
-            addBubble('mogami','最上 清貴','人のいない街、異界のような場所……。\nその話は、どうしても作り話とは思えません。\nその声の主は、本当にどこか別の場所に取り残されていたのかもしれません。');
-            replied = true;
-          }
-
-          if(!replied && state.flags.phase2Unlocked){
-            if(found.warehouse && !state.flags.warehouseSeen){
-              state.flags.warehouseSeen = true;
-              addBubble('mogami','最上 清貴','倉庫……その語は妙に生々しいです。\n古い人形や置物が積まれた、息の詰まるような場所を想像してしまいます。');
-              replied = true;
-            } else if(found.ring && !state.flags.ringSeen){
-              state.flags.ringSeen = true;
-              addBubble('mogami','最上 清貴','指輪、婚約……。\nなぜでしょう、その言葉を見ると胸の奥が痛みます。\n私が失ったのは、友人だけではなかったのかもしれません。');
-              replied = true;
-            } else if(found.existence && !state.flags.existenceSeen){
-              state.flags.existenceSeen = true;
-              addBubble('mogami','最上 清貴','存在や痕跡が鍵なのだとしたら、声が残っていたことにも意味があるはずです。\nあの人は、まだ完全には消えていないのかもしれません。');
-              replied = true;
-            }
-          }
-
-          if(!replied){
-            addBubble('mogami','最上 清貴','ご連絡ありがとうございます。\n申し訳ありません、今の内容だけではまだはっきりしたことは分かりません。\n見つけた語句や、印象に残った単語があれば、そのまま送っていただけると助かります。');
-          }
-
-          if(state.flags.recordingSeen && state.flags.tsukishimaSeen && state.flags.pearSeen && !state.flags.puzzle1Unlocked){
-            const t = addTypingBubble('SYSTEM');
-            await wait(1200);
-            removeBubble(t);
-            addBubble('system','SYSTEM','ここまでの内容を確認しました。\n次に進む前に、簡単な確認問題にお答えください。');
-            openPuzzle1();
-            setStatus('確認メールを受信しました。','ok');
-            return;
-          }
-
-          if(checkPuzzle2Trigger()){
-            const t = addTypingBubble('SYSTEM');
-            await wait(1000);
-            removeBubble(t);
-            addBubble('system','SYSTEM','ここまでの内容を確認しました。\n最後の確認のため、もう一つだけお答えください。');
-            openPuzzle2();
-            setStatus('追加の確認メールを受信しました。','ok');
-            return;
-          }
-
-          if(checkEndingTrigger()){
-            await wait(900);
-            await startEndingSequence();
-          } else {
-            setStatus('返信を受信しました。','ok');
-          }
-        }
-
-        sendBtn.addEventListener('click', async function(){
-          if(state.pending){
-            setStatus('いま返信処理中です。少し待ってください。','warn');
-            return;
-          }
-          const text = bodyInput.value.trim();
-          if(!text){
-            setStatus('本文を入力してください。','warn');
-            return;
-          }
-
-          state.pending = true;
-          sendBtn.disabled = true;
-          sendBtn.textContent = '送信中…';
-          addBubble('player','送信内容',text);
-          bodyInput.value = '';
-
-          try{
-            await respond(text);
-          }catch(err){
-            console.error(err);
-            setStatus('返信処理でエラーが発生しました。','warn');
-          }finally{
-            if(!state.flags.endingStarted){
-              state.pending = false;
-              sendBtn.disabled = false;
-              sendBtn.textContent = '送信する';
-            }
-          }
-        });
-
-        clearBtn.addEventListener('click', function(){
-          bodyInput.value = '';
-          setStatus('');
-        });
-
-        puzzleBtn.addEventListener('click', function(){
-          const answer = puzzleInput.value.trim();
-          if(!answer){
-            setPuzzleStatus('答えを入力してください。','warn');
-            return;
-          }
-
-          if(state.flags.puzzle1Unlocked && !state.flags.puzzle1Cleared){
-            addBubble('player','送信内容','最上様\n\n確認の件、回答します。\n答えは「'+answer+'」です。\n\nご確認をお願いいたします。');
-
-            if(answer === '鈴' || answer === 'すず'){
-              setPuzzleStatus('送信しました。返信を待っています。','ok');
-              closePuzzle();
-              setTimeout(function(){
-                addBubble('mogami','最上 清貴','ありがとうございます。\nそうです、「鈴」で帰る者を呼ぶ……その順番に、どうやら意味がありそうです。');
-                unlockPhase2();
-              }, 1200);
-              puzzleInput.value = '';
-            } else {
-              setPuzzleStatus('送信しましたが、内容に違和感があります。別の答えで再確認してください。','warn');
-              closePuzzle();
-              setTimeout(function(){
-                addBubble('mogami','最上 清貴','ご返信ありがとうございます。\nですが、その語ではない気がします。\nもう一度だけ、手順を見直していただけないでしょうか。');
-                openPuzzle1();
-              }, 1200);
-            }
-            return;
-          }
-
-          if(state.flags.puzzle2Unlocked && !state.flags.puzzle2Cleared){
-            addBubble('player','送信内容','確認の件、回答します。\n\n答えは「'+answer+'」です。');
-
-            if(answer === '痕跡' || answer === 'こんせき' || answer === '記録' || answer === 'きろく'){
-              state.flags.puzzle2Cleared = true;
-              setPuzzleStatus('送信しました。返信を待っています。','ok');
-              closePuzzle();
-              setTimeout(function(){
-                addBubble('mogami','最上 清貴','……そうですね。\n残るのは人そのものではなく、痕跡なのかもしれません。');
-              }, 1000);
-              setTimeout(function(){
-                startEndingSequence();
-              }, 2200);
-              puzzleInput.value = '';
-            } else {
-              setPuzzleStatus('送信しましたが、答えが違うようです。もう一度だけ確認してください。','warn');
-              closePuzzle();
-              setTimeout(function(){
-                addBubble('system','SYSTEM','確認内容に不一致があります。\n最後の確認を再送します。');
-                openPuzzle2();
-              }, 1200);
-            }
-          }
-        });
-
-        playVideoBtn.addEventListener('click', async function(){
-          closeVideoOverlay();
-          await finalEraseAfterVideo();
-        });
-
-        bootSequence();
-
-      } catch (e) {
-        console.error(e);
-        try {
-          document.getElementById('loadingStatus').textContent = 'ERROR';
-          document.getElementById('loadingTitle').textContent = '読み込みエラー';
-          document.querySelector('.loading-sub').textContent = '初期化に失敗しました。別の修正版を使ってください。';
-        } catch (_) {}
-      }
-    })();
-  </script>
+<div class="visualizer-bg" aria-hidden="true"><span class="orb one"></span><span class="orb two"></span><span class="orb three"></span></div>
+<div class="boot" id="boot"><div class="boot-box"><div class="boot-title">MOGAMI MAIL FORM / LOADING</div><div class="boot-lines" id="bootLines"></div><div class="bar"><span></span></div></div></div>
+<header><div class="head"><div class="brand"><span class="mark">M</span><span>最上清貴との通信</span></div><div class="bgm-row"><button class="btn" id="bgmBtn" type="button">BGM OFF</button><span class="pill" id="autosaveLabel">自動保存：待機中</span></div></div></header>
+<main>
+<section class="start-card" id="startCard"><h1>調査記録を読み込みますか？</h1><p>この端末では、HPを調査して見つけた記録を添付し、最上清貴に質問できます。証拠を提示することで、最上の記憶が少しずつ戻る場合があります。</p><div class="actions"><button class="btn primary" id="continueBtn">前回の続きから再開</button><button class="btn" id="newBtn">はじめから</button><button class="btn" id="showLoadBtn">復活の記録を入力</button></div><div id="loadBox" class="hidden" style="margin-top:12px"><textarea class="spell" id="loadSpell" placeholder="復活の記録をここに貼り付けてください"></textarea><button class="btn primary" id="loadBtn" style="width:100%;margin-top:8px">この記録から再開</button></div></section>
+<section id="app" class="hidden"><div class="objective"><div class="label">CURRENT OBJECTIVE</div><p id="objectiveText"></p></div><div class="progress"><div class="box"><small>調査段階</small><strong id="chapterText"></strong></div><div class="box"><small>記憶復元率</small><strong id="memoryText"></strong></div></div><div class="panel"><h2>最上清貴との通信ログ</h2><p class="mini">過去の通信はこの枠内でスクロールできます。最新の返信は下部に追加されます。</p><div class="messages" id="messages"></div></div><div class="panel" id="choicePanel"><h2>確認</h2><div class="choice-grid" id="choiceGrid"></div><p class="mini">最初の確認のみ選択式です。以降は自由入力で質問してください。</p></div><div class="panel form"><h2>最上に質問する</h2><textarea id="question" placeholder="例：学籍番号を教えてください / サークルメンバーは本当に一人だったんですか？ / カセットの冒頭音は儀式では？"></textarea><h2 style="margin-top:16px">添付する調査メモ</h2><div class="evidence-area" id="evidenceArea"></div><div class="send-row"><button class="btn primary" id="sendBtn">証拠を添付して送信</button><button class="btn" id="refreshEvidenceBtn">調査メモを再読み込み</button></div><p class="mini">※通常質問にはそのまま返答します。重要な記憶復元は、HPで見つけた証拠や訪問した調査先を添付して質問すると進行します。</p></div><div class="panel"><details class="compact-details"><summary>調査先 <span class="mini" id="linksSummary">必要な時だけ開く</span></summary><div class="compact-body"><div class="links" id="links"></div></div></details></div><div class="panel"><details class="compact-details"><summary>復活の記録 <span class="mini">必要な時だけ開く</span></summary><div class="compact-body"><button class="btn" id="makeSpellBtn">現在の復活の記録を発行</button><textarea class="spell" id="spellOut" readonly placeholder="ここに復活の記録が表示されます"></textarea><button class="btn danger" id="resetBtn" style="width:100%;margin-top:8px">調査記録を削除して最初から</button></div></details></div></section>
+</main>
+<div class="sending" id="sending"><div class="sending-box">メールを送信中<span class="dots"></span></div></div><div class="toast" id="toast"></div>
+<audio id="bgm" loop preload="none"><source src="bgm.mp3" type="audio/mpeg"></audio>
+<script>
+const SAVE_KEY='mogami_arg_save_v12'; const EVIDENCE_KEY='mogami_arg_evidence'; const VISITED_KEY='mogami_arg_visited_sites';
+const MASTER_EVIDENCE={
+ coocle_site_found:{id:'coocle_site_found',title:'Coocle検索窓を確認',source:'Coocle',description:'最上から共有されたオカルト系検索サイトを確認した。'},
+ daiba_site_found:{id:'daiba_site_found',title:'大馬大学サイトを確認',source:'大馬大学',description:'大馬大学のサイトが現在も残っていることを確認した。'},
+ kamikakushi_site_found:{id:'kamikakushi_site_found',title:'神隠し専門サイトを確認',source:'神隠し専門サイト',description:'神隠しの分類や関連伝承を扱うサイトを確認した。'},
+ occult_site_found:{id:'occult_site_found',title:'オカルトポータルを確認',source:'オカルトポータル',description:'異界・都市伝説・儀式関連の情報が載るポータルを確認した。'},
+ daiba_club_rule:{id:'daiba_club_rule',title:'大馬大学：サークル設立には3名必要',source:'大馬大学',description:'サークル設立規約に、最低3名の所属学生が必要と記載されている。'},
+ daiba_occult_club:{id:'daiba_occult_club',title:'大馬大学：オカルトサークル在籍記録',source:'大馬大学',description:'最上清貴がオカルトサークルに所属していた記録。'},
+ mogami_young_photo:{id:'mogami_young_photo',title:'最上の大学時代の写真',source:'最上との通信',description:'最上が送ってきた大学時代の写真。若い頃の最上が写っている。'},
+ mogami_student_card:{id:'mogami_student_card',title:'最上の学生証画像',source:'最上との通信',description:'最上が送ってきた学生証。学籍番号・生年月日・学科・卒業年が確認できる。'},
+ mogami_solo_club:{id:'mogami_solo_club',title:'最上の発言：サークルは一人だったはず',source:'最上との通信',description:'最上はオカルトサークルを一人で作ったと思っている。'},
+ kamikakushi_types:{id:'kamikakushi_types',title:'神隠しには複数の型がある',source:'神隠し専門サイト',description:'人だけでなく、痕跡や記憶ごと消える型があるという記述。'},
+ tengu_return:{id:'tengu_return',title:'天狗に攫われる：帰還する神隠し',source:'神隠し専門サイト',description:'攫われた者が戻る神隠しの型。'},
+ trace_disappear:{id:'trace_disappear',title:'痕跡・記憶ごと消える型',source:'神隠し専門サイト',description:'そもそもそんな人はいなかったことになる型。'},
+ samuto_forum:{id:'samuto_forum',title:'掲示板考察：サムトの婆は異界入りでは？',source:'考察ログ',description:'サムトの婆を神隠し・異界入りと結びつける考察。'},
+ samuto_zori:{id:'samuto_zori',title:'サムトの婆：草履が残る',source:'伝承アーカイブ',description:'娘が消えたあと草履が置かれていたという話。'},
+ samuto_pear_tree:{id:'samuto_pear_tree',title:'サムトの婆：梨の木の前に草履',source:'伝承アーカイブ',description:'草履が梨の木の前に置かれていた。'},
+ mogami_bonsai_shoes:{id:'mogami_bonsai_shoes',title:'最上の記憶：倉庫の盆栽と靴',source:'最上との通信',description:'最上は暗い倉庫で、盆栽と靴を見た記憶がある。'},
+ ritual_document_web:{id:'ritual_document_web',title:'境界越えの儀式文献',source:'オカルトポータル',description:'東北地方で見つかった境界越えの儀式に関する文献。'},
+ ritual_pear_shoes:{id:'ritual_pear_shoes',title:'文献：梨の木と履き物',source:'オカルトポータル',description:'梨の木と、境界を越える際に履き物を脱ぐ記述。'},
+ cassette_ritual_sounds:{id:'cassette_ritual_sounds',title:'カセット音声：儀式音',source:'カセット音声',description:'冒頭に水、足音、縄、鈴、太鼓のような音が記録されている。'},
+ mogami_400k:{id:'mogami_400k',title:'最上の記憶：40万円の使い道が不明',source:'最上との通信',description:'大学時代に約40万円を稼いだが、何に使ったか思い出せない。'},
+ tsukishima_rumor:{id:'tsukishima_rumor',title:'ツキシマの噂',source:'オカルトポータル',description:'都内のオカルト好きの間で語られた、怪しい情報に詳しい人物。'},
+ tsukishima_bars:{id:'tsukishima_bars',title:'ツキシマ：新宿近辺のバー',source:'ツキシマ記事',description:'ツキシマは新宿近辺のバーに出没したという噂。'},
+ tsukishima_ikai:{id:'tsukishima_ikai',title:'ツキシマ：神隠しと別世界の知識',source:'ツキシマ記事',description:'神隠しは別世界に行くことだと語っていたという証言。'},
+ kaii_warehouse:{id:'kaii_warehouse',title:'東京怪異地図：方南町の呪物倉庫',source:'東京怪異地図',description:'方南町周辺に二階の呪物倉庫があったという記録。'},
+ warehouse_2f:{id:'warehouse_2f',title:'呪物倉庫：建物の2階',source:'東京怪異地図',description:'呪物倉庫は二階にあったという証言。'},
+ warehouse_objects:{id:'warehouse_objects',title:'呪物倉庫：人形・仮面・鎧・カセット',source:'東京怪異地図',description:'雑多な呪物や録音機材が置かれていた。'},
+ ritual_document_mogami:{id:'ritual_document_mogami',title:'最上が送った文献画像',source:'最上との通信',description:'箪笥の奥から出てきた、滲んで読みにくい文献画像。'},
+ cafe_joujou_2f:{id:'cafe_joujou_2f',title:'呪物Café：2階呪物フロア',source:'呪物Caféミラー',description:'方南町にあるカフェの2階に呪物フロアがある。'},
+ cafe_pear_bonsai:{id:'cafe_pear_bonsai',title:'呪物Café：梨の盆栽',source:'呪物Caféミラー',description:'2階フロアに梨の盆栽が追加された記録。'},
+ cafe_owner_tsukishima:{id:'cafe_owner_tsukishima',title:'呪物Café：オーナー月島',source:'呪物Caféミラー',description:'カフェのオーナーが月島であること。'},
+ warehouse_cafe_match:{id:'warehouse_cafe_match',title:'倉庫写真とカフェ内装の一致',source:'写真比較',description:'呪物倉庫写真に写っているものが、カフェ内装と一致する。'},
+ cafe_poltergeist_video:{id:'cafe_poltergeist_video',title:'呪物Café：ポルターガイスト動画',source:'呪物Caféミラー',description:'2階で発生した不可解な音や動きを記録したショート動画。'},
+ onsite_confirmation:{id:'onsite_confirmation',title:'現地確認：2階フロアの展示',source:'現地確認',description:'現地で梨の盆栽、鈴、水音、縄、履き物に関係する展示を確認した。'}
+};
+const INVESTIGATION_LINKS=[
+{id:'coocle',title:'Coocle検索窓',desc:'最上から共有された検索サイト',url:'https://kasugaobaken-rgb.github.io/improved-waddle/'},
+{id:'daiba',title:'大馬大学',desc:'最上清貴の大学時代を調べる',url:'https://kasugaobaken-rgb.github.io/Oba-University/'},
+{id:'kamikakushi',title:'神隠し専門サイト',desc:'神隠しの型や伝承を調べる',url:'https://kasugaobaken-rgb.github.io/laughing-palm-tree/'},
+{id:'occult',title:'オカルトポータル',desc:'異界・ツキシマ・儀式関連',url:'https://kasugaobaken-rgb.github.io/occult-portal/'},
+{id:'kaiimap',title:'東京怪異地図',desc:'方南町の呪物倉庫',url:'#'},
+{id:'joujou',title:'呪物Café記録ページ',desc:'2階フロアと梨の盆栽',url:'#'}
+];
+function initialState(){return{chapter:0,memory:0,objective:'まずは最上からの確認に返答してください。',unlockedLinks:[],flags:{accepted:false,closed:false,student:false,club:false,kamikakushiType:false,samuto:false,pear:false,boundary:false,tsukishima:false,code2:false,warehouse:false,doc:false,cafe:false,onsite:false,final:false},messages:[{from:'mogami',text:'ご連絡ありがとうございます。\nこちらのメールにご連絡いただけたということは、このカセットテープの声の方を探すことに、ご協力いただけるということでよろしいでしょうか。\n\n答えられることには答えます。ですが、私の記憶には抜け落ちている部分が多くあります。あなたが見つけた記録を添えて質問していただければ、何か思い出せるかもしれません。'}]}}
+let state=initialState(); const $=id=>document.getElementById(id);
+function boot(){const lines=['接続先：最上清貴メールフォーム','過去通信ログを確認中...','調査メモ領域を確認中...','復活の記録モジュールを読み込み中...','通信準備が完了しました。'];let i=0,out=$('bootLines');let t=setInterval(()=>{out.textContent+=lines[i]+'\n';i++;if(i>=lines.length){clearInterval(t);setTimeout(()=>$('boot').classList.add('hidden'),650)}},320)}
+function toast(t){const el=$('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2200)}
+function autosave(){localStorage.setItem(SAVE_KEY,JSON.stringify(state));$('autosaveLabel').textContent='自動保存：完了';setTimeout(()=>$('autosaveLabel').textContent='自動保存：有効',900)}
+function loadSave(){try{return JSON.parse(localStorage.getItem(SAVE_KEY)||'null')}catch(e){return null}}
+function getVisitedSites(){try{return JSON.parse(localStorage.getItem(VISITED_KEY)||'[]')}catch(e){return[]}}
+function getExternalEvidence(){try{return JSON.parse(localStorage.getItem(EVIDENCE_KEY)||'[]')}catch(e){return[]}}
+const VISITED_EVIDENCE_MAP={
+ coocle:'coocle_site_found',
+ daiba:'daiba_site_found',
+ kamikakushi:'kamikakushi_site_found',
+ occult:'occult_site_found',
+ kaiimap:'kaii_warehouse',
+ joujou:'cafe_joujou_2f'
+};
+function allEvidence(){
+ const ext=getExternalEvidence();
+ const ids=new Set(ext.map(e=>e.id));
+ getVisitedSites().forEach(siteId=>{
+   const evId=VISITED_EVIDENCE_MAP[siteId];
+   if(evId&&MASTER_EVIDENCE[evId]&&!ids.has(evId)){ext.push(MASTER_EVIDENCE[evId]);ids.add(evId)}
+ });
+ Object.keys(MASTER_EVIDENCE).forEach(id=>{ if(state.flags[id] && !ids.has(id)){ext.push(MASTER_EVIDENCE[id]);ids.add(id)} });
+ return ext
+}
+function addEvidence(id){if(!MASTER_EVIDENCE[id])return;const list=getExternalEvidence();if(!list.some(e=>e.id===id)){list.push(MASTER_EVIDENCE[id]);localStorage.setItem(EVIDENCE_KEY,JSON.stringify(list));toast('調査メモに保存しました：'+MASTER_EVIDENCE[id].title)}}
+function hasEvidence(ids,attached){return ids.every(id=>attached.includes(id)||allEvidence().some(e=>e.id===id))}
+function syncVisitedToLinks(){const v=getVisitedSites();v.forEach(id=>{if(!state.unlockedLinks.includes(id))state.unlockedLinks.push(id)});if(state.flags.accepted&&!state.unlockedLinks.includes('coocle'))state.unlockedLinks.push('coocle')}
+function addMsg(from,text){state.messages.push({from,text});render();autosave()}
+function showSending(cb){$('sending').classList.add('show');setTimeout(()=>{$('sending').classList.remove('show');cb()},650)}
+function render(){syncVisitedToLinks();$('objectiveText').textContent=state.objective;$('chapterText').textContent='第'+state.chapter+'段階';$('memoryText').textContent=state.memory+'%';$('messages').innerHTML=state.messages.map(m=>`<div class="msg ${m.from==='mogami'?'mogami':'player'}"><div class="from">${m.from==='mogami'?'最上清貴':'あなた'}</div><div class="text"></div></div>`).join('');[...$('messages').querySelectorAll('.text')].forEach((el,i)=>el.textContent=state.messages[i].text);$('messages').scrollTop=$('messages').scrollHeight;renderChoices();renderEvidence();renderLinks()}
+function renderChoices(){const grid=$('choiceGrid');grid.innerHTML='';if(!state.flags.accepted&&!state.flags.closed){[['はい','調査に協力します'],['いいえ','今回は協力しません']].forEach(([t,s])=>{const b=document.createElement('button');b.className='choice-btn';b.innerHTML=`${t}<small>${s}</small>`;b.onclick=()=>handleChoice(t);grid.appendChild(b)});$('choicePanel').classList.remove('hidden')}else{$('choicePanel').classList.add('hidden')}}
+function renderEvidence(){const ev=allEvidence();const area=$('evidenceArea');if(!ev.length){area.innerHTML='<div class="empty">添付できる調査メモはまだありません。各サイトで気になる記述を見つけたら「調査メモに保存」を押してください。</div>';return}area.innerHTML=ev.map(e=>`<label class="ev"><input type="checkbox" value="${e.id}"><span><span class="ev-title">${e.title}</span><span class="ev-meta">${e.source}</span><span class="ev-desc">${e.description||''}</span></span></label>`).join('')}
+function renderLinks(){const links=$('links');const list=INVESTIGATION_LINKS.filter(l=>state.unlockedLinks.includes(l.id)||getVisitedSites().includes(l.id));$('linksSummary').textContent=list.length?list.length+'件':'未解放';if(!list.length){links.innerHTML='<div class="empty">まだ調査先はありません。</div>';return}links.innerHTML=list.map(l=>`<a class="link-card" href="${l.url}" target="_blank" rel="noopener"><strong>${l.title}</strong><span>${l.desc}</span></a>`).join('')}
+function handleChoice(choice){if(choice==='いいえ'){state.flags.closed=true;state.objective='調査は終了しました。';showSending(()=>{addMsg('player','いいえ');setTimeout(()=>addMsg('mogami','そうですか……。分かりました。\n無理にお願いすることではございませんので。'),150)});return}state.flags.accepted=true;state.chapter=1;state.memory=5;state.objective='最上の大学時代について情報を集めてください。大学、カセット、キヨ、断捨離など、気になることを質問してみましょう。';state.unlockedLinks.push('coocle');showSending(()=>{addMsg('player','はい');setTimeout(()=>addMsg('mogami','ありがとうございます。\n\n正直なところ、私自身にも心当たりが多くありません。まずは、大学時代に集めていたオカルト関係の切り抜きを少し共有いたします。古いものですので読みにくいところもあるかと思いますが、何かの手がかりになるかもしれません。\n\n【添付資料】\n・神隠しについて\n・都市伝説まとめ\n\nそれから、最近見つけた検索サイトも共有しておきます。オカルト関係の古い情報が比較的よく出てくるようです。\nhttps://kasugaobaken-rgb.github.io/improved-waddle/\n\nなお、各サイトで気になる記述を見つけた場合は「調査メモに保存」しておいてください。保存された記録は、こちらへの質問時に添付できるようになります。'),120)})}
+function norm(s){return String(s||'').replace(/[\s　]/g,'').replace(/[？?]/g,'').toLowerCase()}
+function any(q,words){return words.some(w=>q.includes(w))}
+function attachedIds(){return [...document.querySelectorAll('#evidenceArea input:checked')].map(i=>i.value)}
+function judgeQuestion(raw,att){const q=norm(raw);let reply='';let progressed=false;
+ if(!state.flags.accepted)return 'まずは、協力していただけるかどうかだけ、お返事をいただけますでしょうか。';
+ // high-priority evidence progress
+ if(any(q,['大馬大学','大学','学校','母校'])&&hasEvidence(['daiba_site_found'],att)&&!state.flags.daibaChecked){state.flags.daibaChecked=true;state.memory=Math.max(state.memory,10);addEvidence('mogami_young_photo');reply=`ああ、まだあるんですね。
+
+バブルの時期にできた私立大学でしたので、もう無くなっているものとばかり思っておりました。自分の方でも少し調べてみます。
+
+……ずいぶん綺麗になっていますね。私がいた頃とは、まるで別の学校のようです。見たところ、サークルもかなり減っているようで、私が立ち上げたオカルトサークルも今は残っていないみたいですね。
+
+当時の写真が一枚見つかりましたので、お送りします。お恥ずかしながら、若い頃の私が写っております。`;progressed=true}
+ else if(any(q,['学籍番号','学生証','ログイン'])&&hasEvidence(['daiba_site_found'],att)&&!state.flags.student){state.flags.student=true;state.memory=Math.max(state.memory,12);addEvidence('mogami_student_card');reply='ああ、卒業生用のログインのようなものが残っているのですね。\n昔の番号が今でも使えるのかは分かりませんが、学生証が見つかりました。今は画像の確認が少し難しいかもしれませんので、分かる範囲だけ先にお伝えします。\n\n学籍番号は、86L-0234です。\n生年月日は、1963年06月12日です。\n\n学科や卒業年も学生証に載っているはずです。大したことは書いていないと思いますので、確認していただいて構いません。';progressed=true}
+ else if(any(q,['サークル','メンバー','部員','一人','1人','一人では','作れない','設立'])&&((hasEvidence(['daiba_club_rule'],att))||(hasEvidence(['mogami_solo_club','daiba_occult_club'],att)&&any(q,['作れない','設立','一人では','一人じゃ','3人','三人'])))&&!state.flags.club){state.flags.club=true;state.chapter=Math.max(state.chapter,2);state.memory=Math.max(state.memory,20);addEvidence('mogami_solo_club');reply='……それは、おかしいですね。\n\n私の記憶では、オカルトサークルは私一人だけだったはずなのです。ですが、大学側の記録に私がオカルトサークルに在籍していたと残っているのであれば、少なくとも正式な団体として扱われていたということになります。\n\nそれに、当時もサークルを設立するには最低人数が必要だったはずです。三人いなければ設立できないのであれば、私の記憶の方が間違っていることになります。\n\n誰かが、いたのでしょうか。\nそれも、私が思い出せない誰かが。';progressed=true}
+ else if(any(q,['神隠しの種類','種類','痕跡','記憶ごと','存在ごと'])&&hasEvidence(['kamikakushi_types'],att)&&!state.flags.kamikakushiType){state.flags.kamikakushiType=true;state.chapter=Math.max(state.chapter,3);state.memory=Math.max(state.memory,30);reply='……思い出しました。\n\n神隠しにも、いくつかの型があると考えていました。人だけが消えるもの。物や痕跡まで消えるもの。そして、極端な話ですが、周囲の記憶からも消えてしまうもの。\n\nもし今回の件がその最後の型に近いのだとしたら、私は誰かを忘れているのではなく、忘れさせられているのかもしれません。';progressed=true}
+ else if(any(q,['サムト','婆'])&&hasEvidence(['samuto_forum'],att)&&!state.flags.samuto){state.flags.samuto=true;state.memory=Math.max(state.memory,35);reply='サムトの婆……。聞き覚えはあります。\n\nたしか、遠野物語に出てくる話の一つだったと思います。ただ、それを最初から神隠しとして扱ってよいのかは、当時も少し迷った覚えがあります。\n\nただ、異界に入った話として考えるなら、たしかに引っかかる部分はありますね。';progressed=true}
+ else if(any(q,['梨の木','なしの木','梨'])&&hasEvidence(['samuto_pear_tree'],att)&&state.flags.club&&state.flags.kamikakushiType&&!state.flags.pear){state.flags.pear=true;state.chapter=Math.max(state.chapter,4);state.memory=Math.max(state.memory,45);addEvidence('mogami_bonsai_shoes');state.objective='検索欄に 234567892112 を入力し、境界越えの儀式・異界・ツキシマ周辺の情報を調べてください。';reply='梨の木……。\n\n梨の木の前に、草履。そうでした。そういう話でした。\n\n少し、思い出したことがあります。大学の卒業まで、あと少しという頃です。私は深夜に、暗い物置のような部屋にいました。どうしてそこへ行ったのかは、まるで覚えておりません。\n\nただ、近くに盆栽と靴が置かれていたことだけは覚えています。梨かどうかは分かりません。けれど、あれが梨の木の盆栽だったのだとしたら、サムトの婆の話と構図が似ている気がします。\n\nそれと、検索サイトの更新方法が少し独特らしく、検索欄に「234567892112」と入れると、出てくる情報が変わるようです。';progressed=true}
+ else if(any(q,['境界越え','儀式','文献','url'])&&hasEvidence(['ritual_document_web'],att)&&!state.flags.boundary){state.flags.boundary=true;state.chapter=Math.max(state.chapter,5);state.memory=Math.max(state.memory,55);reply='なるほど……。\n私があの倉庫で見た光景に、よく似ている気がします。\n\nあの盆栽が梨の木だったのだとしたら、私は、儀式が行われたあとの場所にいたのかもしれません。\n\n年寄りの勘違いであればよいのですが、どうにも、偶然とは思えません。';progressed=true}
+ else if(any(q,['ツキシマ','月島','40万','四十万','稼いだ','お金','アルバイト'])&&hasEvidence(['tsukishima_rumor'],att)&&(hasEvidence(['mogami_400k'],att)||any(q,['40万','四十万','稼いだ','お金','アルバイト','使った']))&&!state.flags.tsukishima){state.flags.tsukishima=true;state.memory=Math.max(state.memory,62);reply='ツキシマ……。その名前は、覚えております。\n\n都内のバーに出るとか、怪しい情報を教えてくれるとか、そういう噂があった人物です。\n私は一時期、その人を探していたような気がします。ただ、実際に会った記憶はありません。\n\n四十万円という金額も、ただの遊びに使ったものではなかったはずです。断言はできませんが、私は何かの情報か、道具か、場所にたどり着くために、その金を用意していたのかもしれません。\n\nですが、会おうとしていた記憶だけは、ある気がするのです。';progressed=true}
+ else if((state.flags.boundary&&state.flags.kamikakushiType&&state.flags.tsukishima)&&!state.flags.code2){state.flags.code2=true;state.chapter=Math.max(state.chapter,5);state.memory=Math.max(state.memory,68);state.objective='検索欄に 0389379302 を入力し、怪しい倉庫・呪物倉庫・Coocle制作者・ツキシマ周辺を調べてください。';reply='教えていただいたことを聞いて、少し考えておりました。\n\n私は、もしかするとその境界越えの儀式を、このテープの声の方と行ったのかもしれません。そしてその方は境界を越え、私はその人に関する記憶を失ったまま、あの倉庫で気がついた。\n\nまだ断定はできません。ですが、あの怪しい倉庫について調べる必要がありそうです。\n\nまた同じように、検索欄に「0389379302」と入れてみていただけますか。どういう仕組みなのか、私にもよく分かりませんが、何か見える情報が変わるようです。';progressed=true}
+ else if(any(q,['呪物倉庫','怪しい倉庫','方南町'])&&hasEvidence(['kaii_warehouse'],att)&&!state.flags.warehouse){state.flags.warehouse=true;state.chapter=Math.max(state.chapter,6);state.memory=Math.max(state.memory,75);addEvidence('ritual_document_mogami');state.objective='呪物カフェ、文献画像、カセット音声を照合してください。必要に応じて現地確認へ進んでください。';reply='……間違いないと思います。\n私がいたのも、おそらくここです。詳細な場所は、方南町……。\n\n少し突拍子もないことを申しますが、最近、呪物カフェという場所があるのをご存じでしょうか。それも方南町にあるようなのです。\n\nそれと、箪笥の奥から、古い文献のようなものが出てきました。大学時代に集めたものなのかもしれません。滲んで読みにくいのですが、画像をお送りします。';progressed=true}
+ else if(any(q,['文献','内容がわかった','穴埋め'])&&hasEvidence(['ritual_document_web','ritual_document_mogami'],att)&&!state.flags.doc){state.flags.doc=true;state.memory=Math.max(state.memory,82);reply='本当ですか。\nもし分かる範囲で構いませんので、教えていただけますか。\n\n必要なものは見えてきましたが、儀式の動きがまだ読めません。……いま思ったのですが、カセットテープの冒頭部分は、この文献にある儀式と似ていませんか。もう一度、音を確認していただけませんでしょうか。';progressed=true}
+ else if(any(q,['呪物カフェ','ジュジュ','カフェ'])&&state.flags.warehouse&&hasEvidence(['cafe_joujou_2f','cafe_pear_bonsai'],att)&&!state.flags.cafe){state.flags.cafe=true;state.memory=Math.max(state.memory,88);reply='私の方でも少し調べてみました。\n\n二階、呪物、録音機材、そして梨の盆栽。ここまで重なると、偶然とは言い切れません。\n\nスタッフのショート動画はご覧になりましたか。もしあれが作り物でなければ、文献やカセットの音とかなり似ています。\n\nお手数をおかけして恐縮ですが、一度、現地を確認していただけないでしょうか。';progressed=true}
+ else if(any(q,['現地確認','行ってきた','確認した'])&&hasEvidence(['onsite_confirmation'],att)&&!state.flags.onsite){state.flags.onsite=true;state.memory=Math.max(state.memory,93);reply='ありがとうございます。\n\nでは、改めて儀式の内容と手順を教えていただけますでしょうか。\n文献、カセットの冒頭音、そして現地で確認したものを合わせれば、見えてくるはずです。';progressed=true}
+ else if(any(q,['最終手順','音を返す','履き物','水を撒く','鈴を鳴らす'])&&state.flags.onsite&&state.flags.doc&&hasEvidence(['onsite_confirmation','cassette_ritual_sounds','cafe_poltergeist_video'],att)&&!state.flags.final){state.flags.final=true;state.chapter=7;state.memory=100;state.objective='最上からの返信が途絶えました。しばらくすると、00:00のメールが届きます。';reply='……ありがとうございます。\n\nこれで、ようやく分かった気がします。\n私が何を忘れていたのか。あのテープの声の方が、どこへ行ってしまったのか。\n\n少し、時間をください。';setTimeout(()=>addMsg('mogami','00:00\n\nこのメールが送られている頃、もしかすると私はもう消えているのかもしれません。\n\nこの度は、ご協力いただきありがとうございました。あなたが現地を確認してくださっている間に、儀式に必要なものを用意しました。\n\n私自身で、境界越えの儀式を行おうと思います。\n本当に、ありがとうございました。\n\n【添付】エンディング映像'),2500);progressed=true}
+ if(progressed)return reply;
+ // high-priority partial evidence guidance: these run before normal keyword replies
+ if(any(q,['ツキシマ','月島','40万','四十万','稼いだ','お金','アルバイト'])&&(att.includes('tsukishima_rumor')||att.includes('mogami_400k'))&&!state.flags.tsukishima){return 'ツキシマと、私が大学時代に稼いでいたお金の件ですね。どうにも関係があるような気はします。\n\nただ、私の記憶だけでは断言できません。ツキシマに関する記録と、私が四十万円ほど稼いでいたという話を、あわせて見せていただけますでしょうか。'}
+ if(any(q,['呪物カフェ','ジュジュ','カフェ'])&&(att.includes('cafe_joujou_2f')||att.includes('cafe_pear_bonsai'))&&!state.flags.cafe&&!state.flags.warehouse){return '呪物カフェ……気になる名前ですね。ですが、今の段階では、私がいた倉庫とそこが関係しているかまでは判断できません。\n\nまずは、あの怪しい倉庫についての記録や、方南町との関係が分かるものを見せていただけますでしょうか。'}
+ if(any(q,['最終手順','音を返す','履き物','水を撒く','鈴を鳴らす'])&&(att.includes('onsite_confirmation')||att.includes('cassette_ritual_sounds')||att.includes('cafe_poltergeist_video'))&&!state.flags.final){return '儀式の手順に近づいている気がします。ですが、まだ私の中でつながりきっておりません。\n\n文献の内容、カセットの冒頭音、現地で確認したもの、その三つを揃えて照らし合わせる必要がありそうです。'}
+ if(any(q,['サークル','メンバー','部員','一人','1人','一人では','作れない','設立'])&&(att.includes('mogami_solo_club')||att.includes('daiba_occult_club')||att.includes('daiba_club_rule'))&&!state.flags.club){return 'サークルの件ですね。私の記憶では一人だったはずなのですが、そこがどうにも引っかかります。\n\nもし大学側に、サークルの設立条件や、私がオカルトサークルに在籍していた記録が残っているのであれば、それも併せて見せていただけますでしょうか。記憶と記録を照らし合わせれば、何か思い出せるかもしれません。'}
+ // normal responses
+ if(any(q,['学籍番号','学生証']))return '学籍番号ですか。たしか、学生証はどこかに残っていたはずです。ただ、突然そう聞かれても、すぐには出てきませんね。大学の記録などを確認する必要があるのでしょうか。';
+ if(any(q,['大学','学校','母校','通って','出身校']))return '私が通っていたのは、「大馬大学」というところです。なんとも言えない学歴の私立大学でしたね。\n今も残っているかは分かりません。バブルの頃の私立大学でしたから、なくなっていてもおかしくないと思っておりました。';
+ if(any(q,['神隠し','行方不明','消える']))return '当時の私は、神隠しについて調べるのがちょっとしたブームでした。行方不明になる人の話を、UFOだの神隠しだのと結びつけて考えていたのです。大学のサークル部屋で、行方不明者の情報をホワイトボードにまとめていた覚えもあります。';
+ if(any(q,['別世界','異世界','きさらぎ']))return '別世界……神隠しの一説として、そういう考えは当時もあったと思います。最近の都市伝説ですと、きさらぎ駅などが有名ですね。';
+ if(any(q,['サークル','メンバー','部員','仲間'])){addEvidence('mogami_solo_club');return '私の記憶では、オカルトサークルは私一人だけだったはずです。……ですが、そう言い切ってしまうのも、どこか落ち着かないのです。'}
+ if(any(q,['オカルト']))return 'オカルトは好きでした。子どもの頃にUFOを見たと思っておりまして、それ以来、そういう話に惹かれるようになりました。';
+ if(any(q,['ufo','ＵＦＯ','円盤']))return '子どもの頃、町の夏祭りの帰り道でした。頭上を円盤のようなものが抜けていったのです。ものすごい風でした。他の人は気づいていない様子でしたが、私は確かに見たと思っています。';
+ if(any(q,['カセット','テープ','音声','声']))return '手紙に書いた以上のことは、あまり思い出せません。ただ、このテープの声の方が呼んでいる「キヨ」というのは、おそらく私のことだと思います。';
+ if(any(q,['キヨ','愛称','あだ名']))return 'キヨは、私の昔の愛称です。子どもの頃からそう呼ばれておりました。ですから、このテープの声の方が呼んでいるキヨは、私で間違いないと思います。';
+ if(any(q,['断捨離','終活','片付け']))return '先日、定年で退職いたしまして。独り身でもありますし、いわゆる終活のつもりで家の中を片付け始めたのです。その中で、あのカセットテープを見つけました。';
+ if(any(q,['40万','四十万','稼いだ','お金','アルバイト'])){addEvidence('mogami_400k');return '大学時代、たしかに何かのために金を稼いでいました。金額は四十万円ほどだったと思います。\nただ、その使い道だけが、どうにも思い出せないのです。遊びに使った金ではなかったはずなのですが。'}
+ if(any(q,['天狗']))return '天狗に攫われる、というのは江戸時代あたりによく語られた神隠しの型ですね。戻ってきた子どもが、見たはずのない名所の話をした、というような記録もあったはずです。';
+ if(any(q,['サムト','婆']))return 'サムトの婆……聞き覚えがあります。たしか遠野物語に出てくるお話の一つだったと思います。ただ、それを神隠しとして扱ってよいのかは、少し難しいところですね。';
+ if(any(q,['倉庫','物置']))return 'あれは……どこだったでしょうか。都内なのは間違いないと思います。人形や仮面、鎧のようなものが雑多に置かれていました。建物の二階だったことは覚えています。';
+ if(any(q,['ツキシマ','月島']))return '当時、そういう人がいるという噂はありました。都内のバーに出没して、怪しい情報を教えてくれるとか。私も探したことがあった気がしますが、会った覚えはありません。';
+ if(any(q,['ありがとう','こんにちは','こんばんは','おはよう']))return 'こちらこそ、ご協力いただきありがとうございます。私の方でも思い出せることを探してみますので、何か気になることがあればお送りください。';
+ return 'すみません。そのことは、今のところはっきりと思い出せません。\nもし関係しそうな記録やページを見つけていましたら、それを添えてもう一度送っていただけますでしょうか。';}
+function sendQuestion(){const raw=$('question').value.trim();if(!raw)return;const att=attachedIds();showSending(()=>{addMsg('player',raw+(att.length?'\n\n【添付】'+att.map(id=>MASTER_EVIDENCE[id]?.title||id).join(' / '):''));$('question').value='';setTimeout(()=>addMsg('mogami',judgeQuestion(raw,att)),120)})}
+function makeSpell(){const data=btoa(unescape(encodeURIComponent(JSON.stringify(state))));$('spellOut').value=data;toast('復活の記録を発行しました')}
+function loadSpell(){try{state=JSON.parse(decodeURIComponent(escape(atob($('loadSpell').value.trim()))));startApp()}catch(e){toast('復活の記録を読み込めませんでした')}}
+function startApp(){document.getElementById('startCard').classList.add('hidden');document.getElementById('app').classList.remove('hidden');render();autosave()}
+function clearAllMogamiData(){
+  try{
+    const keys=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k && (k.indexOf('mogami_arg_')===0 || k==='arg_evidence' || k==='arg_visited_sites')) keys.push(k);
+    }
+    keys.forEach(k=>localStorage.removeItem(k));
+    localStorage.removeItem(SAVE_KEY);
+    localStorage.removeItem(EVIDENCE_KEY);
+    localStorage.removeItem(VISITED_KEY);
+  }catch(e){
+    localStorage.removeItem(SAVE_KEY);
+    localStorage.removeItem(EVIDENCE_KEY);
+    localStorage.removeItem(VISITED_KEY);
+  }
+}
+function startNew(){clearAllMogamiData();state=initialState();localStorage.setItem(SAVE_KEY,JSON.stringify(state));startApp()}
+function restore(){const s=loadSave();if(s){state=s;startApp()}else{toast('前回の記録がありません')}}
+function attachedIds(){return [...document.querySelectorAll('#evidenceArea input:checked')].map(i=>i.value)}
+document.getElementById('continueBtn').onclick=restore;document.getElementById('newBtn').onclick=startNew;document.getElementById('showLoadBtn').onclick=()=>document.getElementById('loadBox').classList.toggle('hidden');document.getElementById('loadBtn').onclick=loadSpell;document.getElementById('sendBtn').onclick=sendQuestion;document.getElementById('refreshEvidenceBtn').onclick=()=>{renderEvidence();toast('調査メモを再読み込みしました')};document.getElementById('makeSpellBtn').onclick=makeSpell;document.getElementById('resetBtn').onclick=()=>{if(confirm('調査記録・訪問済みサイト・保存済み証拠をすべて削除して最初から始めますか？')){clearAllMogamiData();state=initialState();location.reload()}};document.getElementById('bgmBtn').onclick=()=>{const a=document.getElementById('bgm');if(a.paused){a.play().then(()=>{document.body.classList.add('audio-reactive');document.getElementById('bgmBtn').textContent='BGM ON'}).catch(()=>toast('bgm.mp3を配置すると再生できます'))}else{a.pause();document.body.classList.remove('audio-reactive');document.getElementById('bgmBtn').textContent='BGM OFF'}};
+boot();
+</script>
 </body>
 </html>
